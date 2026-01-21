@@ -31,10 +31,10 @@ set(OCPN_RELEASE_REPO
 #
 # -------  Plugin setup --------
 #
+
 set(PKG_NAME demoplugin_pi) #or _pi
 set(PKG_VERSION  1.0)
 set(PKG_PRERELEASE "")  # Empty, or a tag like 'beta'
-
 set(DISPLAY_NAME DemoPlugin)    # Dialogs, installer artifacts, ...
 set(PLUGIN_API_NAME DemoPlugin) # As of GetCommonName() in plugin API
 set(PKG_SUMMARY "Demonstration plugin")
