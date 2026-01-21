@@ -26,7 +26,8 @@
       #include <wx/wx.h>
 #endif
 
-// Special Folder Paths
+// wxWidgets
+#include <wx/filename.h>
 #include <wx/stdpaths.h>
 
 // Defines version numbers, names etc. for this plugin
@@ -39,8 +40,8 @@
 class DemoPlugin : public opencpn_plugin_117 {
 public:
 	// Constructor
-	DemoPlugin(void *ppimgr);
-	
+	DemoPlugin(void* ppimgr);
+
 	// Destructor
 	~DemoPlugin(void);
 
@@ -55,15 +56,14 @@ public:
 	wxString GetCommonName() override;
 	wxString GetShortDescription() override;
 	wxString GetLongDescription() override;
-	wxBitmap *GetPlugInBitmap() override;
-	
-private:
-	// Reference to the OpenCPN window handle
-	wxWindow* m_ParentWindow;
+	wxBitmap* GetPlugInBitmap() override;
 
+private:
+	
 	// Plugin icon
-	wxBitmap m_PluginBitmap;
-	
-	
+	wxBitmap m_pluginBitmap;
+
+};
+
 #endif 
 
