@@ -1,0 +1,106 @@
+= Audiopilot
+
+== Links
+
+Source: https://github.com/twocanplugin/demo_plugin[Github Repository]
+
+Releases: https://github.com/audiopilot/demo_plugin/releases[Github Releases]
+
+
+Forum:
+http://www.cruisersforum.com/forums/f134/demo_plugin.html[Cruiser's
+Forum Demo Plugin Thread]
+
+== 1. What and Why
+
+Demo Plugin
+
+== 2. Install
+
+image::demo_plugin-01.png
+
+Download the plugin tarball from the repository. Install using the plugin manager. Tools→Plugins→Import plugin.
+
+image::demo_plugin-02.png
+
+== 3. Enabling
+
+Enable the plugin using Tools→Plugins, finding the Demo Plugin entry and tick the checkbox.
+
+image::demo_plugin-03.png
+
+== 4. Using the OpenCPN Plugin API's
+
+=== Chapter 1. Basic plugin, Mandatory API's, Logging, Plugin Folders
+
+This is a basic plugin, that demonstrates the mandatory API's that a plugin MUST support.
+
+Note that the class that implements the plugin, derives from an OpenCPN plugin base class. Over successive versions of OpenCPN
+new functions and members have been added to the base classes. The plugin need only inherit from a base class that provides the
+API's required for the plugin's desired capabilites.
+
+Eg.DemoPlugin::DemoPlugin(void* ppimgr) : opencpn_plugin_117(ppimgr) is derived from the OpenCPN Plugin API version 1.17 base class
+
+The mandatory API's that all plugins must implement
+
+These two API's indicate what version of the OpenCPN API's are supported
+GetAPIVersionMajor()
+Eg. if the plugin is derived from OpenCPN Plugin API 1.17, the major version number is 1
+
+GetAPIVersionMinor()
+Eg. if the plugin is derived from OpenCPN Plugin API 1.17, the minor version number is 17
+
+These three API's indicate the version number of the plugin
+GetPlugInVersionMajor()
+Eg. If the plugin version is 1.2.3, the major version is 1
+
+GetPlugInVersionMinor() 
+Eg. If the plugin version is 1.2.3, the major version is 2
+
+GetPlugInVersionPatch() 
+Eg. If the plugin version is 1.2.3, the patch version is 3
+
+This returns the name of the plugin and is displayed in the Plugin Manager
+GetCommonName() 
+
+The following two API's return a long and short description, both of which are displayed in the Plugin Manager
+GetShortDescription()
+
+GetLongDescription()
+
+This API returns the icon for the plugin whuch is displayed in the Plugin Manager. It should be a 32 x 32 pixel bitmap.
+GetPlugInBitmap() 
+
+image::demo_plugin-04.png
+
+In addition the plugin dumps some of the OpenCPN standard folder paths and user's measurement units into the OpenCPN log file
+using wxLogMessage. This OpenCPN log is the preferred mechanism for plugins to log messages. To log important error messages, 
+you can also us wxLogError.
+
+=== Chapter 2. Configuration (Default Settings)
+
+=== Chapter 3. Settings/Preferences
+
+=== Chapter 4. Context Menus
+
+=== Chapter 5. Toolbar
+
+=== Chapter 6. NMEA 0183
+
+=== Chapter 7. NMEA 2000
+
+=== Chapter 8. SignalK
+
+=== Chapter 9. OCPN Messaging
+
+=== Chapter 10. Routes & Waypoints
+
+=== Chapter 11. Drawing on Canvas (non OpenGL)
+
+=== Chapter 12. Drawing on Canvas (OpenGL)
+
+=== Chapter 13. wxWidgets Advabced User Interface
+Chapter 14. Chart
+
+
+== 5. FAQ

@@ -13,22 +13,19 @@
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with the Racing plugin for OpenCPN. If not, see <https://www.gnu.org/licenses/>.
+// along with the Demo plugin for OpenCPN. If not, see <https://www.gnu.org/licenses/>.
 //
 
 //
 // Project: Demo Plugin
 // Description: Demonstrate the use of the OpenCPN plugin API's
 // Owner: twocanplugin@hotmail.com
-// Date: 10/01/2025
+// Date: 10/01/2026
 // Version History: 
 // 1.0 Initial Release
+// Chapter 1. A Basic plugin, that does little except to dump some common OpenCPN file paths
 
 #include "demo_plugin.h"
-
-// wxWidgets includes
-#include <wx/window.h>
-#include <wx/filename.h>
 
 // The class factories, used to create and destroy instances of the PlugIn
 extern "C" DECL_EXP opencpn_plugin* create_pi(void *ppimgr) {
@@ -40,13 +37,14 @@ extern "C" DECL_EXP void destroy_pi(opencpn_plugin* p) {
 }
 
 // Constructor
-// This release is a basic plugin that does not require any "newer" plugin API's beyond API v 1.7
+// This release is a basic plugin that does not require any "newer" plugin API's beyond API v 1.17
 DemoPlugin::DemoPlugin(void* ppimgr) : opencpn_plugin_117(ppimgr) {
 	
-	// Initialize the plugin bitmap, converting from SVG to PNG. Refer to GetPluginBitmap
-	// The svg file will be "installed: into the plugin's data folder
+	// Initialize the plugin bitmap, converting from SVG to PNG. Refer to GetPluginBitmap below
+	// Note the icon file is located in the source repository data folder
+	// and consequently will be installed into user's plugin data fiolder
 	wxString pluginFolder = GetPluginDataDir(PKG_NAME) + wxFileName::GetPathSeparator() + "data" + wxFileName::GetPathSeparator();
-	m_PluginBitmap = GetBitmapFromSVGFile(pluginFolder + "demo_plugin.svg", 32, 32);
+	m_pluginBitmap = GetBitmapFromSVGFile(pluginFolder + "demo_plugin.svg", 32, 32);
 }
 
 // Destructor
@@ -56,42 +54,42 @@ DemoPlugin::~DemoPlugin(void) {
 // Perform plugin initialization here. At this point most of OpenCPN has been initialised and most of the plugin API's can be invoked
 int DemoPlugin::Init(void) {
 
-	// Maintain a reference to the OpenCPN window to use as the parent Window for plugin dialogs
-	m_ParentWindow = GetOCPNCanvasWindow();
-
-	// Load localized strings. Strings to be localized are prefixed with the _() macro
-	// BUG BUG Naming...
-	// AddLocaleCatalog("opencpn-demo_pi");
-
-	// Dump some of the OpenCPN's special folders
-	wxLogMessage("Demo Plugin, OpenCPN Program Path (opencpn.exe): %s", GetOCPN_ExePath());
+	// Dump some of OpenCPN's special folder paths
+	wxLogMessage("Demo Plugin, OpenCPN Program Path (opencpn executable): %s", GetOCPN_ExePath());
 	wxLogMessage("Demo Plugin, OpenCPN Plugin Path (built-in plugins): %s", *GetpPlugInLocation());
 	wxLogMessage("Demo Plugin, OpenCPN Private Data Path (logs, config): %s", *GetpPrivateApplicationDataLocation());
 	wxLogMessage("Demo Plugin, OpenCPN Shared Data Path: %s", *GetpSharedDataLocation());
 	wxLogMessage("Demo Plugin, Any Plugin's Writeable Documents Path: %s", GetWritableDocumentsDir());
 	wxLogMessage("Demo Plugin, This Plugin's Data Path: %s", GetPluginDataDir(PKG_NAME));
 	wxLogMessage("Demo Plugin, This Plugin's Library Path: %s", GetPlugInPath(this));
+
+	// Dump some of OpenCPN's user measurement preferences
+	wxLogMessage("Demo Plugin, Temperature Units: %s", getUsrTempUnit_Plugin());
+	wxLogMessage("Demo Plugin, Speed Units: %s", getUsrSpeedUnit_Plugin());
+
+	// Dump the location of the user's documents folder
+	wxLogMessage("Demo Plugin, User's Documents: %s", wxStandardPaths::Get().GetDocumentsDir());
 	
-	// Notify OpenCPN what events we want to receive callbacks for
+	// Notify OpenCPN what callbacks the plugin registers to receive
 	return 0;
 }
 
-// OpenCPN is either closing down, or we have been disabled from the Preferences Dialog
+// OpenCPN is either closing down, or the plugin has been disabled from the Preferences Dialog
 bool DemoPlugin::DeInit(void) {
 
-	// OpenCPN doesn't actually care about the return value
+	// Note, OpenCPN doesn't actually care about the return value
 	return true; 
 }
 
 // OpenCPN Plugin "housekeeping" methods. All plugins MUST implement these
 
-// Indicate what version of the OpenCPN Plugin API we support
-// Indicate what version of the OpenCPN Plugin API we support
+// Indicate what version of the OpenCPN Plugin API is supported
+// Note if using the TestPlugin template, replace these with OCPN_API_VERSION_MAJOR 
+// and OCPN_API_VERSION_MINOR
 int DemoPlugin::GetAPIVersionMajor() {
 	return atoi(API_VERSION);
 }
 
-// shipdriver template is rather fugly compared to testplugin template....
 int DemoPlugin::GetAPIVersionMinor() {
 	std::string v(API_VERSION);
 	size_t dotpos = v.find('.');
@@ -113,22 +111,24 @@ int DemoPlugin::GetPlugInVersionPatch() {
 }
 
 // Return descriptions for the Plugin
-// Shipdriver template fugliness....
+// Note if using TestPlugin template use PLUGIN_COMMON_NAME
 wxString DemoPlugin::GetCommonName() {
 	return PLUGIN_API_NAME;
 }
 
+// Note if using TestPlugin template use PLUGIN_SHORT_DESCRIPTION
 wxString DemoPlugin::GetShortDescription() {
 	return PKG_SUMMARY;
 }
 
+// Note if using TestPlugin template use PLUGIN_LONG_DESCRIPTION
 wxString DemoPlugin::GetLongDescription() {
-	return PKG_DESCRIPTION; //PLUGIN_LONG_DESCRIPTION;
+	return PKG_DESCRIPTION;
 }
 
 // Most plugins use a 32x32 pixel PNG file converted to xpm by pgn2wx.pl perl script
-// However easier to use a SVG file as it means I can maintain one image format rather than several.
+// However it might be easier to use a SVG file as you only need to maintain one image format
 wxBitmap* DemoPlugin::GetPlugInBitmap() {
-	return &pluginBitmap;
+	return &m_pluginBitmap;
 }
 

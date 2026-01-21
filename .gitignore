@@ -1,0 +1,17 @@
+.idea
+build
+build-*
+!build-conf.rc
+!build-deps
+po/*.pot
+.DS_Store
+*thumbs.db
+cache
+cmake-build-*
+local_config.cmake
+plugins
+*.bat
+*.bak
+buildwin/*.7z
+*.user
+
