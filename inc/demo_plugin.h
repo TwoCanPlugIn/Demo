@@ -13,7 +13,7 @@
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with the Racing plugin for OpenCPN. If not, see <https://www.gnu.org/licenses/>.
+// along with the Demo plugin for OpenCPN. If not, see <https://www.gnu.org/licenses/>.
 
 
 #ifndef DEMO_PLUGIN_H
@@ -29,6 +29,7 @@
 // wxWidgets
 #include <wx/filename.h>
 #include <wx/stdpaths.h>
+#include <wx/fileconf.h>
 
 // Defines version numbers, names etc. for this plugin
 // This is automagically constructed via config.h.in from CMakeLists.txt
@@ -57,12 +58,11 @@ public:
 	wxString GetShortDescription() override;
 	wxString GetLongDescription() override;
 	wxBitmap* GetPlugInBitmap() override;
+	void SetDefaults(void) override;
 
 private:
-	
-	// Plugin icon
-	wxBitmap m_pluginBitmap;
-
+	void LoadSettings();
+	void SaveSettings();
 };
 
 #endif 

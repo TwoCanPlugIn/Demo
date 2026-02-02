@@ -49,9 +49,15 @@ include_directories(${CMAKE_SOURCE_DIR}/inc)
 
 set(SRC
     ${CMAKE_SOURCE_DIR}/src/demo_plugin.cpp
+    ${CMAKE_SOURCE_DIR}/src/demo_globals.cpp
+    ${CMAKE_SOURCE_DIR}/src/demo_wizard.cpp
+    ${CMAKE_SOURCE_DIR}/src/demo_wizardbase.cpp
 )
 set (INC
     ${CMAKE_SOURCE_DIR}/inc/demo_plugin.h
+    ${CMAKE_SOURCE_DIR}/inc/demo_globals.h
+    ${CMAKE_SOURCE_DIR}/inc/demo_wizard.h
+    ${CMAKE_SOURCE_DIR}/inc/demo_wizardbase.h
 )
 
 set (SOURCE_FILES ${SRC} ${INC})
