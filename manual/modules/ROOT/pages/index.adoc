@@ -23,11 +23,15 @@ Download the plugin tarball from the repository. Install using the plugin manage
 
 image::demo_plugin-02.png
 
+The plugin manager displays a dialog indicating the plugin has been successfully installed.
+
+image::demo_plugin-03.png
+
 == 3. Enabling
 
 Enable the plugin using Tools→Plugins, finding the Demo Plugin entry and tick the checkbox.
 
-image::demo_plugin-03.png
+image::demo_plugin-04.png
 
 == 4. Using the OpenCPN Plugin API's
 
@@ -68,7 +72,7 @@ GetShortDescription()
 
 GetLongDescription()
 
-This API returns the icon for the plugin whuch is displayed in the Plugin Manager. It should be a 32 x 32 pixel bitmap.
+This API returns the icon for the plugin which is displayed in the Plugin Manager. It should be a 32 x 32 pixel bitmap.
 GetPlugInBitmap() 
 
 image::demo_plugin-04.png
@@ -78,6 +82,15 @@ using wxLogMessage. This OpenCPN log is the preferred mechanism for plugins to l
 you can also us wxLogError.
 
 === Chapter 2. Configuration (Default Settings)
+
+OpenCPN and plugins persist configuration settings using the wxWidgets file based configuration class. This allows settings
+to be persisted in a standard ini file format.
+
+Upon plugin installation and enabling, an OpenCPN Callback API SetDefaults can be implemented to allow the plugin to perform its initial
+configuration. In this example, a wxWizard dialog is displayed to allow the users to configure the plugin's settings. 
+However developers are free to implement any UI they wish, or in fact not display any UI, rather just adopt some default values.
+
+image::demo_plugin-05.png 
 
 === Chapter 3. Settings/Preferences
 

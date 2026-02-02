@@ -1,8 +1,8 @@
-# Audiopilot plugin README
+# Demo plugin README
 
-An OpenCPN plugin for visually impaired sailors. It outputs voice for boat & wind speed, heading, depth, bearing to next waypoint and supports speech recognition to alter course and select a waypoint or route. 
+An OpenCPN Demonstration plugin that illustrates the use of the OpenCPN Plugin API's
+The plugin does nothing useful other than guiding a plugin developer through each of the different types of API's
 
-More user info: https://opencpn.org/OpenCPN/plugins/audiopilot.html
 
 Building is documented in INSTALL.md
 

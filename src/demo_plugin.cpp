@@ -24,8 +24,15 @@
 // Version History: 
 // 1.0 Initial Release
 // Chapter 1. A Basic plugin, that does little except to dump some common OpenCPN file paths
+// Chapter 2. Plugin initial configuration and settings
 
 #include "demo_plugin.h"
+
+// Global variables accessed by the plugin and various dialogs
+#include "demo_globals.h"
+
+// Implements a wxWizard dialog to configure the plugin's initial settings
+#include "demo_wizard.h"
 
 // The class factories, used to create and destroy instances of the PlugIn
 extern "C" DECL_EXP opencpn_plugin* create_pi(void *ppimgr) {
@@ -44,7 +51,7 @@ DemoPlugin::DemoPlugin(void* ppimgr) : opencpn_plugin_117(ppimgr) {
 	// Note the icon file is located in the source repository data folder
 	// and consequently will be installed into user's plugin data fiolder
 	wxString pluginFolder = GetPluginDataDir(PKG_NAME) + wxFileName::GetPathSeparator() + "data" + wxFileName::GetPathSeparator();
-	m_pluginBitmap = GetBitmapFromSVGFile(pluginFolder + "demo_plugin.svg", 32, 32);
+	g_pluginBitmap = GetBitmapFromSVGFile(pluginFolder + "demo_plugin.svg", 32, 32);
 }
 
 // Destructor
@@ -129,6 +136,34 @@ wxString DemoPlugin::GetLongDescription() {
 // Most plugins use a 32x32 pixel PNG file converted to xpm by pgn2wx.pl perl script
 // However it might be easier to use a SVG file as you only need to maintain one image format
 wxBitmap* DemoPlugin::GetPlugInBitmap() {
-	return &m_pluginBitmap;
+	return &g_pluginBitmap;
+}
+
+// When the plugin is enabled, this API provides the opportunity to configure initial settings
+void DemoPlugin::SetDefaults(void) {
+	auto installationWizard = std::make_unique<DemoWizard>(GetOCPNCanvasWindow());
+	if (installationWizard->RunWizard(installationWizard->m_pages.at(0))) {
+		SaveSettings();
+	}
+}
+
+void DemoPlugin::LoadSettings() {
+	wxFileConfig* configSettings = GetOCPNConfigObject();
+	if (configSettings) {
+		configSettings->SetPath("/PlugIns/DemoPlugin");
+		configSettings->Read("A_Boolean_Value", &g_someBooleanValue, false);
+		configSettings->Read("An_Integer_Value", &g_someIntegerValue, 0);
+		configSettings->Read("A_String_Value", &g_someStringValue, wxEmptyString);
+	}
+}
+
+void DemoPlugin::SaveSettings() {
+	wxFileConfig* configSettings = GetOCPNConfigObject();
+	if (configSettings) {
+		configSettings->SetPath("/PlugIns/DemoPlugin");
+		configSettings->Write("A_Boolean_Value", g_someBooleanValue);
+		configSettings->Write("An_Integer_Value", g_someIntegerValue);
+		configSettings->Write("A_String_Value", g_someStringValue);
+	}
 }
 
