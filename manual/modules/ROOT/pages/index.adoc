@@ -37,11 +37,15 @@ Install using the plugin manager. Tools→Plugins→Import plugin.
 
 image::demo_plugin-02.png[]
 
+The plugin manager displays a dialog indicating the plugin has been successfully installed.
+
+image::demo_plugin-03.png[]
+
 == 3. Enabling
 
 Enable the plugin using Tools→Plugins, find the Demo Plugin entry and tick the checkbox.
 
-image::demo_plugin-03.png[]
+image::demo_plugin-04.png[]
 
 == 4. Using the OpenCPN Plugin API's
 
@@ -108,6 +112,15 @@ wxLogMessage("Demo Plugin, Speed Units: %s", getUsrSpeedUnit_Plugin());
 To log important error messages, you can also us wxLogError.
 
 === Chapter 2. Configuration (Default Settings)
+
+OpenCPN and plugins persist configuration settings using the wxWidgets file based configuration class. This allows settings
+to be persisted in a standard ini file format.
+
+Upon plugin installation and enabling, an OpenCPN Callback API SetDefaults can be implemented to allow the plugin to perform its initial
+configuration. In this example, a wxWizard dialog is displayed to allow the users to configure the plugin's settings. 
+However developers are free to implement any UI they wish, or in fact not display any UI, rather just adopt some default values.
+
+image::demo_plugin-05.png[]
 
 === Chapter 3. Settings/Preferences
 
