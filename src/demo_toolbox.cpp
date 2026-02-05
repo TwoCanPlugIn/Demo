@@ -14,42 +14,39 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with the Demo plugin for OpenCPN. If not, see <https://www.gnu.org/licenses/>.
+//
 
 //
 // Project: Demo Plugin
-// Description: A wxWidgets wxWizard used to initially configure the plugin when installed/enabled
+// Description: a wxWidgets wxPanel added to the OpenCPN Toolbox to modify settings
 // Owner: twocanplugin@hotmail.com
 // Date: 10/01/2026
 // Version History: 
 // 1.0 Initial Release
 
-#include "demo_wizard.h"
+#include "demo_toolbox.h"
 
 #include "demo_globals.h"
 
 // Constructor and destructor implementation
-DemoWizard::DemoWizard(wxWindow* parent) : DemoWizardBase(parent) {
+DemoToolbox::DemoToolbox( wxWindow* parent) : DemoToolboxBase(parent) {
+	checkBoxBoolean->SetValue(g_someBooleanValue);
+	sliderInteger->SetValue(g_someIntegerValue);
+	textString->SetValue(g_someStringValue);
 }
 
-DemoWizard::~DemoWizard() {
+DemoToolbox::~DemoToolbox() {
 }
 
-void DemoWizard::OnInit(wxInitDialogEvent& event) {
-	checkBoxBoolean->SetValue(false);
-	sliderInteger->SetValue(50);
-	textString->SetValue("Demo Plugin");
-	Layout();
-	Fit();
-}
-
-void DemoWizard::OnCancel(wxWizardEvent& event) {
-	g_someBooleanValue = false;
-	g_someIntegerValue = 0;
-	g_someStringValue = wxEmptyString;
-}
-
-void DemoWizard::OnFinished(wxWizardEvent& event) {
+// Note a bug in the logic. The global settings are updated even if the dialog is cancelled!
+void DemoToolbox::OnCheckBoolean(wxCommandEvent& event) {
 	g_someBooleanValue = checkBoxBoolean->IsChecked();
+}
+
+void DemoToolbox::OnSliderChanged(wxScrollEvent& event) { 
 	g_someIntegerValue = sliderInteger->GetValue();
+}
+
+void DemoToolbox::OnTextChanged(wxCommandEvent& event) {
 	g_someStringValue = textString->GetValue();
 }

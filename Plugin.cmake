@@ -51,18 +51,22 @@ set(SRC
     ${CMAKE_SOURCE_DIR}/src/demo_plugin.cpp
     ${CMAKE_SOURCE_DIR}/src/demo_globals.cpp
     ${CMAKE_SOURCE_DIR}/src/demo_wizard.cpp
-    ${CMAKE_SOURCE_DIR}/src/demo_wizardbase.cpp
+    ${CMAKE_SOURCE_DIR}/src/demo_toolbox.cpp
+     ${CMAKE_SOURCE_DIR}/src/demo_settings.cpp
+    ${CMAKE_SOURCE_DIR}/src/demo_ui_base.cpp
 )
 set (INC
     ${CMAKE_SOURCE_DIR}/inc/demo_plugin.h
     ${CMAKE_SOURCE_DIR}/inc/demo_globals.h
     ${CMAKE_SOURCE_DIR}/inc/demo_wizard.h
-    ${CMAKE_SOURCE_DIR}/inc/demo_wizardbase.h
+    ${CMAKE_SOURCE_DIR}/inc/demo_toolbox.h
+    ${CMAKE_SOURCE_DIR}/inc/demo_settings.h
+    ${CMAKE_SOURCE_DIR}/inc/demo_ui_base.h
 )
 
 set (SOURCE_FILES ${SRC} ${INC})
 
-set(PKG_API_LIB api-17)  
+set(PKG_API_LIB api-20)  
 
 macro(late_init)
   # Perform initialization after the PACKAGE_NAME library, compilers

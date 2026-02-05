@@ -86,13 +86,70 @@ you can also us wxLogError.
 OpenCPN and plugins persist configuration settings using the wxWidgets file based configuration class. This allows settings
 to be persisted in a standard ini file format.
 
+Settings can saved using code similar to:
+[source,cpp]
+----
+wxFileConfig* configSettings = GetOCPNConfigObject();
+	if (configSettings) {
+		configSettings->SetPath("/PlugIns/DemoPlugin");
+		configSettings->Write("A_Boolean_Value", g_someBooleanValue);
+		configSettings->Write("An_Integer_Value", g_someIntegerValue);
+		configSettings->Write("A_String_Value", g_someStringValue);
+	}
+----
+
 Upon plugin installation and enabling, an OpenCPN Callback API SetDefaults can be implemented to allow the plugin to perform its initial
 configuration. In this example, a wxWizard dialog is displayed to allow the users to configure the plugin's settings. 
 However developers are free to implement any UI they wish, or in fact not display any UI, rather just adopt some default values.
 
+[source,cpp]
+----
+void DemoPlugin::SetDefaults(void) {
+	auto installationWizard = std::make_unique<DemoWizard>(GetOCPNCanvasWindow());
+	if (installationWizard->RunWizard(installationWizard->m_pages.at(0))) {
+		SaveSettings();
+	}
+}
+----
+
 image::demo_plugin-05.png 
 
 === Chapter 3. Settings/Preferences
+
+There are two mechanisms that may be used to display an interface to allow users to configure the plugin.
+The first mechanism adds a notebook page to any of the notebook tabs (Display, Charts, Ship, User) in the OpenCPN Toolbox.
+This requires the INSTALL_TOOLBOX_PAGE value to be returned in the Init function and the OnSetupOptions function to be overridden 
+
+[source,cpp]
+----
+void DemoPlugin::OnSetupOptions(void) {
+	auto toolBoxWindow = AddOptionsPage(OptionsParentPI::PI_OPTIONS_PARENT_UI, _("Demo Settings"));
+	auto toolboxSizer = new wxBoxSizer(wxVERTICAL);
+	toolBoxWindow->SetSizer(toolboxSizer);
+	auto demoToolbox =  new DemoToolbox(toolBoxWindow);
+	toolboxSizer->Add(demoToolbox, 1, wxALL | wxEXPAND);
+}
+----
+
+image::demo_plugin-06.png 
+
+The second mechanism is for the plugin to provide its own dialog which is displayed from the plugin's preference option. This requires
+the WANTS_PREFERENCES value to be returned in the Init function and the ShowPreferencesDialog function to be overridden.
+
+image::demo_plugin-07.png
+
+[source,cpp]
+----
+void DemoPlugin::ShowPreferencesDialog(wxWindow* parent) {
+	auto demoSettings = std::make_unique<DemoSettings>(parent, wxID_ANY, _("Demo Preferences"));
+	if (wxID_OK == demoSettings->ShowModal()) {
+		SaveSettings();
+	}
+}
+----
+
+image::demo_plugin-08.png
+
 
 === Chapter 4. Context Menus
 

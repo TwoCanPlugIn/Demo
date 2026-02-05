@@ -1,4 +1,4 @@
-// Copyright(C) 2018-2025 by Steven Adler
+// Copyright(C) 2026 by Steven Adler
 //
 // This file is part of the Demo plugin for OpenCPN.
 //
@@ -25,6 +25,8 @@
 // 1.0 Initial Release
 // Chapter 1. A Basic plugin, that does little except to dump some common OpenCPN file paths
 // Chapter 2. Plugin initial configuration and settings
+// Chapter 3. Saving & Loading settings and modifying settings using the toolbox
+
 
 #include "demo_plugin.h"
 
@@ -33,6 +35,12 @@
 
 // Implements a wxWizard dialog to configure the plugin's initial settings
 #include "demo_wizard.h"
+
+// Implements the toolbox page to demonstrate modifying settings from the Toobox page
+#include "demo_toolbox.h"
+
+// Implements a dialog to demonstrate modifying settings from the Plugin Preferences option
+#include "demo_settings.h"
 
 // The class factories, used to create and destroy instances of the PlugIn
 extern "C" DECL_EXP opencpn_plugin* create_pi(void *ppimgr) {
@@ -45,7 +53,7 @@ extern "C" DECL_EXP void destroy_pi(opencpn_plugin* p) {
 
 // Constructor
 // This release is a basic plugin that does not require any "newer" plugin API's beyond API v 1.17
-DemoPlugin::DemoPlugin(void* ppimgr) : opencpn_plugin_117(ppimgr) {
+DemoPlugin::DemoPlugin(void* ppimgr) : opencpn_plugin_120(ppimgr) {
 	
 	// Initialize the plugin bitmap, converting from SVG to PNG. Refer to GetPluginBitmap below
 	// Note the icon file is located in the source repository data folder
@@ -77,8 +85,11 @@ int DemoPlugin::Init(void) {
 	// Dump the location of the user's documents folder
 	wxLogMessage("Demo Plugin, User's Documents: %s", wxStandardPaths::Get().GetDocumentsDir());
 	
+	// Load the previously saved settings
+	LoadSettings();
+
 	// Notify OpenCPN what callbacks the plugin registers to receive
-	return 0;
+	return (WANTS_CONFIG | INSTALLS_TOOLBOX_PAGE | WANTS_PREFERENCES);
 }
 
 // OpenCPN is either closing down, or the plugin has been disabled from the Preferences Dialog
@@ -147,6 +158,37 @@ void DemoPlugin::SetDefaults(void) {
 	}
 }
 
+void DemoPlugin::SetupToolboxPanel(int page_sel, wxNotebook* pnotebook) {
+
+	wxMessageBox(wxString::Format("SetupToolboxPanel invoked: %d", page_sel), "Demo Plugin");
+}
+
+// Invoked when the OpenCPN Toolbox OK, Apply or Cancel buttons are pressed
+void DemoPlugin::OnCloseToolboxPanel(int page_sel, int ok_apply_cancel) {
+	// BUG BUG Why didn't they use standard enums like wxID_OK ??	
+	if ((ok_apply_cancel == 0) || (ok_apply_cancel == 4)) {
+		SaveSettings();
+	}
+}
+
+// Invoked at Startup and displayed when the OpenCPN Toolbox is displayed
+void DemoPlugin::OnSetupOptions(void) {
+	// Add our toolbox to the "User Interface" tab
+	auto toolBoxWindow = AddOptionsPage(OptionsParentPI::PI_OPTIONS_PARENT_UI, _("Demo Settings"));
+	auto toolboxSizer = new wxBoxSizer(wxVERTICAL);
+	toolBoxWindow->SetSizer(toolboxSizer);
+	// Create our toolbox panel and add it to the toolbox via the sizer
+	auto demoToolbox =  new DemoToolbox(toolBoxWindow);
+	toolboxSizer->Add(demoToolbox, 1, wxALL | wxEXPAND);
+}
+
+void DemoPlugin::ShowPreferencesDialog(wxWindow* parent) {
+	auto demoSettings = std::make_unique<DemoSettings>(parent, wxID_ANY, _("Demo Preferences"));
+	if (wxID_OK == demoSettings->ShowModal()) {
+		SaveSettings();
+	}
+}
+
 void DemoPlugin::LoadSettings() {
 	wxFileConfig* configSettings = GetOCPNConfigObject();
 	if (configSettings) {
@@ -166,4 +208,3 @@ void DemoPlugin::SaveSettings() {
 		configSettings->Write("A_String_Value", g_someStringValue);
 	}
 }
-
