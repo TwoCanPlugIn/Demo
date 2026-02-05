@@ -43,37 +43,61 @@ Note that the class that implements the plugin, derives from an OpenCPN plugin b
 new functions and members have been added to the base classes. The plugin need only inherit from a base class that provides the
 API's required for the plugin's desired capabilites.
 
-Eg.DemoPlugin::DemoPlugin(void* ppimgr) : opencpn_plugin_117(ppimgr) is derived from the OpenCPN Plugin API version 1.17 base class
+[source,cpp]
+----
+DemoPlugin::DemoPlugin(void* ppimgr) : opencpn_plugin_117(ppimgr) 
+----
+is derived from the OpenCPN Plugin API version 1.17 base class
 
 The mandatory API's that all plugins must implement
 
 These two API's indicate what version of the OpenCPN API's are supported
+[source,cpp]
+----
 GetAPIVersionMajor()
+----
 Eg. if the plugin is derived from OpenCPN Plugin API 1.17, the major version number is 1
-
+[source,cpp]
+----
 GetAPIVersionMinor()
+----
 Eg. if the plugin is derived from OpenCPN Plugin API 1.17, the minor version number is 17
 
 These three API's indicate the version number of the plugin
+[source,cpp]
+----
 GetPlugInVersionMajor()
+----
 Eg. If the plugin version is 1.2.3, the major version is 1
-
+[source,cpp]
+----
 GetPlugInVersionMinor() 
+----
 Eg. If the plugin version is 1.2.3, the major version is 2
-
+[source,cpp]
+----
 GetPlugInVersionPatch() 
+----
 Eg. If the plugin version is 1.2.3, the patch version is 3
 
 This returns the name of the plugin and is displayed in the Plugin Manager
+[source,cpp]
+----
 GetCommonName() 
+----
 
 The following two API's return a long and short description, both of which are displayed in the Plugin Manager
+[source,cpp]
+----
 GetShortDescription()
 
 GetLongDescription()
-
+----
 This API returns the icon for the plugin which is displayed in the Plugin Manager. It should be a 32 x 32 pixel bitmap.
+[source,cpp]
+----
 GetPlugInBitmap() 
+----
 
 image::demo_plugin-04.png
 
@@ -169,7 +193,7 @@ image::demo_plugin-08.png
 
 === Chapter 12. Drawing on Canvas (OpenGL)
 
-=== Chapter 13. wxWidgets Advabced User Interface
+=== Chapter 13. wxWidgets Advanced User Interface
 Chapter 14. Chart
 
 
