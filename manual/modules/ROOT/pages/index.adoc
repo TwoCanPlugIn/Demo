@@ -43,31 +43,6 @@ image::demo_plugin-02.png[]
 Enable the plugin using Tools→Plugins, find the Demo Plugin entry and tick the checkbox.
 
 image::demo_plugin-03.png[]
-=======
-http://www.cruisersforum.com/forums/f134/demo_plugin.html[Cruiser's
-Forum Demo Plugin Thread]
-
-== 1. What and Why
-
-Demo Plugin
-
-== 2. Install
-
-image::demo_plugin-01.png
-
-Download the plugin tarball from the repository. Install using the plugin manager. Tools→Plugins→Import plugin.
-
-image::demo_plugin-02.png
-
-The plugin manager displays a dialog indicating the plugin has been successfully installed.
-
-image::demo_plugin-03.png
-
-== 3. Enabling
-
-Enable the plugin using Tools→Plugins, finding the Demo Plugin entry and tick the checkbox.
-
-image::demo_plugin-04.png
 
 == 4. Using the OpenCPN Plugin API's
 
@@ -132,33 +107,50 @@ OpenCPN log file using wxLogMessage. This OpenCPN log is the preferred mechanism
 wxLogMessage("Demo Plugin, Speed Units: %s", getUsrSpeedUnit_Plugin());
 ----
 To log important error messages, you can also us wxLogError.
-=======
 GetAPIVersionMajor()
+----
 Eg. if the plugin is derived from OpenCPN Plugin API 1.17, the major version number is 1
-
+[source,cpp]
+----
 GetAPIVersionMinor()
+----
 Eg. if the plugin is derived from OpenCPN Plugin API 1.17, the minor version number is 17
 
 These three API's indicate the version number of the plugin
+[source,cpp]
+----
 GetPlugInVersionMajor()
+----
 Eg. If the plugin version is 1.2.3, the major version is 1
-
+[source,cpp]
+----
 GetPlugInVersionMinor() 
+----
 Eg. If the plugin version is 1.2.3, the major version is 2
-
+[source,cpp]
+----
 GetPlugInVersionPatch() 
+----
 Eg. If the plugin version is 1.2.3, the patch version is 3
 
 This returns the name of the plugin and is displayed in the Plugin Manager
+[source,cpp]
+----
 GetCommonName() 
+----
 
 The following two API's return a long and short description, both of which are displayed in the Plugin Manager
+[source,cpp]
+----
 GetShortDescription()
 
 GetLongDescription()
-
+----
 This API returns the icon for the plugin which is displayed in the Plugin Manager. It should be a 32 x 32 pixel bitmap.
+[source,cpp]
+----
 GetPlugInBitmap() 
+----
 
 image::demo_plugin-04.png
 
