@@ -26,6 +26,7 @@
 // Chapter 1. A Basic plugin, that does little except to dump some common OpenCPN file paths
 // Chapter 2. Plugin initial configuration and settings
 // Chapter 3. Saving & Loading settings and modifying settings using the toolbox
+// Chapter 4. User interaction - Context Menus
 
 
 #include "demo_plugin.h"
@@ -87,6 +88,15 @@ int DemoPlugin::Init(void) {
 	
 	// Load the previously saved settings
 	LoadSettings();
+
+	// Example of adding an item to the root context menu
+	auto demoContextMenu = new wxMenuItem(NULL, k_FirstContextMenu, "Demo", "Demo Plugin Menu", wxITEM_NORMAL, NULL);
+	demoContextMenuId = AddCanvasContextMenuItem(demoContextMenu, this);
+
+	// Example of adding an item to a sub context menu
+	// Valid Sub Menu Names are "Route", "Waypoint", "Track", "AIS")
+	auto dscMenu = new wxMenuItem(NULL, k_SecondContextMenu, "AIS Demo", "Demo Plugin AIS Sub Menu", wxITEM_NORMAL, NULL);
+	demoAISContextMenuId = AddCanvasContextMenuItemExt(dscMenu, this, "AIS");
 
 	// Notify OpenCPN what callbacks the plugin registers to receive
 	return (WANTS_CONFIG | INSTALLS_TOOLBOX_PAGE | WANTS_PREFERENCES);
@@ -158,8 +168,8 @@ void DemoPlugin::SetDefaults(void) {
 	}
 }
 
+// This API seems to be deprecated?
 void DemoPlugin::SetupToolboxPanel(int page_sel, wxNotebook* pnotebook) {
-
 	wxMessageBox(wxString::Format("SetupToolboxPanel invoked: %d", page_sel), "Demo Plugin");
 }
 
@@ -172,6 +182,7 @@ void DemoPlugin::OnCloseToolboxPanel(int page_sel, int ok_apply_cancel) {
 }
 
 // Invoked at Startup and displayed when the OpenCPN Toolbox is displayed
+// Requires INSTALLS_TOOLBOX_PAGE
 void DemoPlugin::OnSetupOptions(void) {
 	// Add our toolbox to the "User Interface" tab
 	auto toolBoxWindow = AddOptionsPage(OptionsParentPI::PI_OPTIONS_PARENT_UI, _("Demo Settings"));
@@ -182,10 +193,34 @@ void DemoPlugin::OnSetupOptions(void) {
 	toolboxSizer->Add(demoToolbox, 1, wxALL | wxEXPAND);
 }
 
+// Invoked from he plugin's preferences option, enabling the user to modify the plugin's settings.
+// Requires WANTS_PREFERENCES
 void DemoPlugin::ShowPreferencesDialog(wxWindow* parent) {
 	auto demoSettings = std::make_unique<DemoSettings>(parent, wxID_ANY, _("Demo Preferences"));
 	if (wxID_OK == demoSettings->ShowModal()) {
 		SaveSettings();
+	}
+}
+
+// Invoked when the plugin's context menu items are selected
+void DemoPlugin::OnContextMenuItemCallback(int id) {
+
+	if (id == demoContextMenuId) {
+		// A plugin can optionally enable/disable their context menus with the following line
+		// SetCanvasContextMenuItemGrey(demoContextMenuId, false);
+		wxMessageBox(wxString::Format("Demo Context Menu Selected, Menu Id: %d", id), 
+			"Demo Plugin");
+	}
+}
+
+// Invoked when a plugin's context sub menu items are selected
+// Note requires an OpenCPN API level of 1.20 or higher
+void DemoPlugin::OnContextMenuItemCallbackExt(int id, std::string obj_ident, std::string obj_type, double lat, double lon) {
+
+	if (id == demoAISContextMenuId) {
+		wxMessageBox(wxString::Format("Object Id: %d\nObject Identifier (MMSI): %s\nObject Type: %s\nLatitude: %s\nLongitude: %s",
+			id, obj_ident.c_str(), obj_type.c_str(),
+			toSDMM_PlugIn(1, lat, true), toSDMM_PlugIn(2, lon, true)), "AIS Target Information", wxOK | wxICON_INFORMATION);
 	}
 }
 

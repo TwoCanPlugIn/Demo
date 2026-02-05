@@ -177,6 +177,61 @@ image::demo_plugin-08.png
 
 === Chapter 4. Context Menus
 
+One method that a plugin may solicit input from a user is via context menu items. The plugin 
+may add its own context menu items to the root context menu which will be displayed when the 
+user right clicks on the OpenCPN Canvas.
+
+image::demo_plugin-09.png
+
+Context Menu items are added using code similar to:
+[source,cpp]
+----
+auto demoContextMenu = new wxMenuItem(NULL, wxID_HIGHEST + 1, "Demo", "Demo Plugin Menu", wxITEM_NORMAL, NULL);
+demoContextMenuId = AddCanvasContextMenuItem(demoContextMenu, this);
+----
+
+When the context menu item is selected, the plugin handles the callback, checking that 
+the context menu item id matches and performs whatever functions the plugin requires.
+In this example just a message box is displayed.
+[source,cpp]
+----
+void DemoPlugin::OnContextMenuItemCallback(int id) {
+	if (id == demoContextMenuId) {
+		wxMessageBox(wxString::Format("Demo Context Menu Selected, Menu Id: %d", id), "Demo Plugin");
+	}
+}
+----
+image::demo_plugin-11.png
+
+Context Menu Items may also be added to the Sub Menus for AIS, Routes, Waypoints and Tracks. 
+This is only supported when using OpenCPN API level 1.20 or higher. An example of adding a 
+context menu item to the AIS sub menu is shown below.
+[source,cpp]
+----
+auto dscMenu = new wxMenuItem(NULL, wxID_HIGHEST + 2, "AIS Demo", "Demo Plugin AIS Sub Menu", wxITEM_NORMAL, NULL);
+demoAISContextMenuId = AddCanvasContextMenuItemExt(dscMenu, this, "AIS");
+----
+
+image::demo_plugin-12.png
+
+Again plugins may perform any function that is required, in this case just displaying a
+message box with some details about the selected AIS target. Also note that some OpenCPN helper
+API's are used to format the latitude and longitude which are stored internally by OpenCPN
+as doubles, into human readable strings.
+[source,cpp]
+----
+void DemoPlugin::OnContextMenuItemCallbackExt(int id, std::string obj_ident, std::string obj_type, double lat, double lon) {
+	if (id == demoAISContextMenuId) {
+		wxMessageBox(wxString::Format("Object Id: %d\nObject Identifier (MMSI): %s\nObject Type: %s\nLatitude: %s\nLongitude: %s",
+			id, obj_ident.c_str(), obj_type.c_str(), toSDMM_PlugIn(1, lat, true), 
+			toSDMM_PlugIn(2, lon, true)), "AIS Target Information", 
+			wxOK | wxICON_INFORMATION);
+	}
+}
+----
+
+image::demo_plugin-13.png
+
 === Chapter 5. Toolbar
 
 === Chapter 6. NMEA 0183
