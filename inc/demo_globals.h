@@ -33,4 +33,8 @@ extern bool g_someBooleanValue;
 extern int g_someIntegerValue;
 extern wxString g_someStringValue;
 
+// Id's used for wxWidgets thingies
+constexpr int k_FirstContextMenu = wxID_HIGHEST + 1;
+constexpr int k_SecondContextMenu = wxID_HIGHEST + 2;
+
 #endif

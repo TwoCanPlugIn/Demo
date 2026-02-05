@@ -63,10 +63,15 @@ public:
 	void OnCloseToolboxPanel(int page_sel, int ok_apply_cancel) override;
 	void OnSetupOptions(void) override;
 	void ShowPreferencesDialog(wxWindow* parent) override;
+	void OnContextMenuItemCallback(int id) override;
+	void OnContextMenuItemCallbackExt(int id, std::string obj_ident, std::string obj_type, double lat, double lon) override;
 
 private:
 	void LoadSettings();
 	void SaveSettings();
+
+	int demoContextMenuId;
+	int demoAISContextMenuId;
 };
 
 #endif 
