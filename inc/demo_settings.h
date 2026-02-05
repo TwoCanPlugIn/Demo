@@ -15,8 +15,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the Demo plugin for OpenCPN. If not, see <https://www.gnu.org/licenses/>.
 
-#ifndef DEMO_WIZARD_H
-#define DEMO_WIZARD_H
+#ifndef DEMO_SETTINGS_H
+#define DEMO_SETTINGS_H
 
 // wxWidgets Precompiled Headers
 #include "wx/wxprec.h"
@@ -25,26 +25,30 @@
 #include "wx/wx.h"
 #endif
 
-// The wxWizard base class from which we are derived
+// The dialog base class from which we are derived
 // Note wxFormBuilder was used to generate the UI
 #include "demo_ui_base.h"
 
-class DemoWizard : public DemoWizardBase {
-	
+#include "demo_globals.h"
+
+class DemoSettings : public DemoSettingsBase {
+
 public:
-	DemoWizard(wxWindow* parent);
-	~DemoWizard();
-	
+	DemoSettings(wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Demo Plugin Preferences"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxDEFAULT_DIALOG_STYLE);
+	~DemoSettings();
+
 protected:
 	// Overridden methods from the base class
 	void OnInit(wxInitDialogEvent& event) override;
-	void OnCancel(wxWizardEvent& event) override;
-	void OnFinished(wxWizardEvent& event) override;
+	void OnOK(wxCommandEvent& event) override;
+	void OnCancel(wxCommandEvent& event) override;
+	void OnApply(wxCommandEvent& event) override;
 
-protected:
-	
+
 private:
-	
+	bool originalBooleanValue;
+	int originalIntegerValue;
+	wxString originalStringValue;
 };
 
 #endif

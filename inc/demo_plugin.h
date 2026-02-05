@@ -38,7 +38,7 @@
 // OpenCPN Plugin header
 #include "ocpn_plugin.h"
 
-class DemoPlugin : public opencpn_plugin_117 {
+class DemoPlugin : public opencpn_plugin_120 {
 public:
 	// Constructor
 	DemoPlugin(void* ppimgr);
@@ -59,6 +59,10 @@ public:
 	wxString GetLongDescription() override;
 	wxBitmap* GetPlugInBitmap() override;
 	void SetDefaults(void) override;
+	void SetupToolboxPanel(int page_sel, wxNotebook* pnotebook) override;
+	void OnCloseToolboxPanel(int page_sel, int ok_apply_cancel) override;
+	void OnSetupOptions(void) override;
+	void ShowPreferencesDialog(wxWindow* parent) override;
 
 private:
 	void LoadSettings();
