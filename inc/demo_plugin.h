@@ -65,13 +65,19 @@ public:
 	void ShowPreferencesDialog(wxWindow* parent) override;
 	void OnContextMenuItemCallback(int id) override;
 	void OnContextMenuItemCallbackExt(int id, std::string obj_ident, std::string obj_type, double lat, double lon) override;
+	void OnToolbarToolCallback(int id) override;
 
 private:
 	void LoadSettings();
 	void SaveSettings();
 
+	// Context Menu Id's
 	int demoContextMenuId;
 	int demoAISContextMenuId;
+	
+	// Toolbar button Id & state
+	int demoToolbarId;
+	bool isToolbarActive;
 };
 
 #endif 

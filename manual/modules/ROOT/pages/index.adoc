@@ -234,6 +234,42 @@ image::demo_plugin-13.png
 
 === Chapter 5. Toolbar
 
+Plugins may install a toolbar button to allow different tasks to be performed. Firstly create your
+toolbar button icons as Scaled Vector Graphics (.SVG) files.  Create three icons to represent the
+normal (untoggled) state, toggled state and rollover state (although for some reason OpenCPN
+does not process a rollover event).
+
+The following code is used to create the toolbar button:
+[source,cpp]
+----
+demoToolbarId = InsertPlugInToolSVG("Demo", normalIcon,
+		rolloverIcon, toggledIcon, wxITEM_CHECK, "Demo", "Demo Plugin Toolbar Description", NULL, -1, 0, this);
+----
+
+Note to also add the value INSTALLS_TOOLBAR_BUTTON to the return value of the Init function
+The toolbar button will then be displayed.
+
+image::demo_plugin-14.png
+
+To handle the toolbar button press, code similar to the following is invoked by the callback.
+[source,cpp]
+----
+void DemoPlugin::OnToolbarToolCallback(int id) {
+	if (id == demoToolbarId) {
+		isToolbarActive = !isToolbarActive;
+		SetToolbarItemState(id, isToolbarActive);
+		wxMessageBox(wxString::Format("Demo Toolbar invoked, Id: %d", id), "Demo Plugin");
+		isToolbarActive = !isToolbarActive;
+		SetToolbarItemState(id, isToolbarActive);
+	}
+}
+----
+
+In this example the plugin only displays a message box. Note that the state of the button
+is toggled while the message box is displayed using the SetToolbarItemState function.
+
+image::demo_plugin-15.png
+
 === Chapter 6. NMEA 0183
 
 === Chapter 7. NMEA 2000
