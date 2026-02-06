@@ -27,6 +27,7 @@
 // Chapter 2. Plugin initial configuration and settings
 // Chapter 3. Saving & Loading settings and modifying settings using the toolbox
 // Chapter 4. User interaction - Context Menus
+// Chapter 5. User interaction - Toolbar Buttons
 
 
 #include "demo_plugin.h"
@@ -98,8 +99,25 @@ int DemoPlugin::Init(void) {
 	auto dscMenu = new wxMenuItem(NULL, k_SecondContextMenu, "AIS Demo", "Demo Plugin AIS Sub Menu", wxITEM_NORMAL, NULL);
 	demoAISContextMenuId = AddCanvasContextMenuItemExt(dscMenu, this, "AIS");
 
+	// Example of adding a Toolbar button
+	// Firstly obtain the toolbar button icons
+	wxString pluginFolder = GetPluginDataDir(PKG_NAME) + wxFileName::GetPathSeparator() + "data" + wxFileName::GetPathSeparator();
+
+	// This assumes the plugin is using Scaled Vector Graphics (SVG)
+	wxString normalIcon = pluginFolder + "demo_icon_normal.svg";
+	wxString toggledIcon = pluginFolder + "demo_icon_toggled.svg";
+	wxString rolloverIcon = pluginFolder + "demo_icon_rollover.svg";
+
+	// Finally add the toolbar button, note also requires INSTALLS_TOOLBAR_TOOL
+	// BUG BUG Note that OpenCPN does not implement the rollover state
+	demoToolbarId = InsertPlugInToolSVG("Demo", normalIcon,
+		rolloverIcon, toggledIcon, wxITEM_CHECK, "Demo", "Demo Plugin Toolbar Description", NULL, -1, 0, this);
+
+	// A flag used to indicate the toggled/untoggled state of the toolbar button
+	isToolbarActive = false;
+
 	// Notify OpenCPN what callbacks the plugin registers to receive
-	return (WANTS_CONFIG | INSTALLS_TOOLBOX_PAGE | WANTS_PREFERENCES);
+	return (WANTS_CONFIG | INSTALLS_TOOLBOX_PAGE | WANTS_PREFERENCES | INSTALLS_TOOLBAR_TOOL);
 }
 
 // OpenCPN is either closing down, or the plugin has been disabled from the Preferences Dialog
@@ -221,6 +239,19 @@ void DemoPlugin::OnContextMenuItemCallbackExt(int id, std::string obj_ident, std
 		wxMessageBox(wxString::Format("Object Id: %d\nObject Identifier (MMSI): %s\nObject Type: %s\nLatitude: %s\nLongitude: %s",
 			id, obj_ident.c_str(), obj_type.c_str(),
 			toSDMM_PlugIn(1, lat, true), toSDMM_PlugIn(2, lon, true)), "AIS Target Information", wxOK | wxICON_INFORMATION);
+	}
+}
+
+// Invoked when the plugin's toolbar button is presssed
+void DemoPlugin::OnToolbarToolCallback(int id) {
+	if (id == demoToolbarId) {
+		// Just display a message box. 
+		// Note toggling the state of the toolbar while the message box is displayed
+		isToolbarActive = !isToolbarActive;
+		SetToolbarItemState(id, isToolbarActive);
+		wxMessageBox(wxString::Format("Demo Toolbar invoked, Id: %d", id), "Demo Plugin");
+		isToolbarActive = !isToolbarActive;
+		SetToolbarItemState(id, isToolbarActive);
 	}
 }
 
