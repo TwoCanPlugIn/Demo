@@ -187,7 +187,7 @@ One method that a plugin may solicit input from a user is via context menu items
 may add its own context menu items to the root context menu which will be displayed when the 
 user right clicks on the OpenCPN Canvas.
 
-image::demo_plugin-09.png
+image::demo_plugin-09.png[]
 
 Context Menu items are added using code similar to:
 [source,cpp]
@@ -207,7 +207,7 @@ void DemoPlugin::OnContextMenuItemCallback(int id) {
 	}
 }
 ----
-image::demo_plugin-11.png
+image::demo_plugin-11.png[]
 
 Context Menu Items may also be added to the Sub Menus for AIS, Routes, Waypoints and Tracks. 
 This is only supported when using OpenCPN API level 1.20 or higher. An example of adding a 
@@ -218,7 +218,7 @@ auto dscMenu = new wxMenuItem(NULL, wxID_HIGHEST + 2, "AIS Demo", "Demo Plugin A
 demoAISContextMenuId = AddCanvasContextMenuItemExt(dscMenu, this, "AIS");
 ----
 
-image::demo_plugin-12.png
+image::demo_plugin-12.png[]
 
 Again plugins may perform any function that is required, in this case just displaying a
 message box with some details about the selected AIS target. Also note that some OpenCPN helper
@@ -236,11 +236,46 @@ void DemoPlugin::OnContextMenuItemCallbackExt(int id, std::string obj_ident, std
 }
 ----
 
-image::demo_plugin-13.png
+image::demo_plugin-13.png[]
 
 === Chapter 5. Toolbar
 
-=== Chapter 6. Naigation Data
+Plugins may install a toolbar button to allow different tasks to be performed. Firstly create your
+toolbar button icons as Scaled Vector Graphics (.SVG) files.  Create three icons to represent the
+normal (untoggled) state, toggled state and rollover state (although for some reason OpenCPN
+does not process a rollover event).
+
+The following code is used to create the toolbar button:
+[source,cpp]
+----
+demoToolbarId = InsertPlugInToolSVG("Demo", normalIcon,
+		rolloverIcon, toggledIcon, wxITEM_CHECK, "Demo", "Demo Plugin Toolbar Description", NULL, -1, 0, this);
+----
+
+Note to also add the value INSTALLS_TOOLBAR_BUTTON to the return value of the Init function
+The toolbar button will then be displayed.
+
+image::demo_plugin-14.png[]
+
+To handle the toolbar button press, code similar to the following is invoked by the callback.
+[source,cpp]
+----
+void DemoPlugin::OnToolbarToolCallback(int id) {
+	if (id == demoToolbarId) {
+		isToolbarActive = !isToolbarActive;
+		SetToolbarItemState(id, isToolbarActive);
+		wxMessageBox(wxString::Format("Demo Toolbar invoked, Id: %d", id), "Demo Plugin");
+		isToolbarActive = !isToolbarActive;
+		SetToolbarItemState(id, isToolbarActive);
+	}
+}
+----
+
+In this example the plugin only displays a message box. Note that the state of the button
+is toggled while the message box is displayed using the SetToolbarItemState function.
+
+image::demo_plugin-15.png[]
+
 
 === Chapter 7. NMEA 0183
 
