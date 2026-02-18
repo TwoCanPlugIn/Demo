@@ -1,4 +1,4 @@
-= Audiopilot
+= Demo Plugin
 
 == Links
 
@@ -13,13 +13,14 @@ Forum Demo Plugin Thread]
 
 == 1. What and Why
 
-Demo Plugin
+Demonstration Plugin - May assist plugin developers to understand how to build OpenCPN 
+plugins using the various plugin API's.
 
 == 2. Install
 
 image::demo_plugin-01.png
 
-Download the plugin tarball from the repository. Install using the plugin manager. Tools→Plugins→Import plugin.
+Once you have successfully compiled the plugin, download the plugin tarball from the repository. Install using the plugin manager. Tools→Plugins→Import plugin.
 
 image::demo_plugin-02.png
 
@@ -271,6 +272,66 @@ is toggled while the message box is displayed using the SetToolbarItemState func
 image::demo_plugin-15.png
 
 === Chapter 6. NMEA 0183
+
+==== Receiving NMEA 0183
+
+There are two mechanisms for a plugin to receive NMEA 0183 data from OpenCPN.
+
+. The "old" method using the callback API SetNMEASentence.
+This is the original method initially implemented by OpenCPN. Plugins register the callback
+function by including WANTS_NMEA_SENTENCES with the return value of the Init function. Plugins then 
+implement the SetNMEASentence function and will then receive ALL NMEA0183 sentences received by OpenCPN.
+
+Plugins then process all received sentences and act on those sentences that are of interest.
+
+In the demo plugin, the following code implements the callback API used to receive NMEA 0183 sentences.
+
+[source,cpp]
+----
+void DemoPlugin::SetNMEASentence(wxString& sentence) {
+ ...
+}
+----
+
+One the plugin has received the NMEA sentence, it may process the sentence using any method. The
+OpenCPN support libraries bundle a set of MEA 0183 libraries.
+
+These can be added to the plugin by including them with the CMAKE scripts; 
+if using the Shipdriver template in Plugin.cmake or if using the Testplugin template, in CMakelists.txt
+[source,cpp]
+-----
+add_subdirectory(opencpn-libs/nmea0183)
+target_link_libraries(${PACKAGE_NAME} ocpn::nmea0183)
+----
+
+The following code snippet demonstrates usage of the bundled NMEA 0183 library, in this case
+parsing the NMEA 0183 MWV (Wind transducer) sentence, for example $WIMWV,190.0,R,11.4,K,A*1A
+
+[source,cpp]
+----
+void DemoPlugin::SetNMEASentence(wxString& sentence) {
+	NMEA0183 parserNMEA0183;
+	parserNMEA0183 << sentence;
+	// This checks that the sentence is valid (has a talker id, mnemonic & valid checksum)
+	if (parserNMEA0183.PreParse()) {
+		if (parserNMEA0183.LastSentenceIDReceived == "MWV") {
+			if (parserNMEA0183.Parse()) {
+				if (parserNMEA0183.Mwv.Reference == "R") {
+					// Relative Wind Angle
+					double apparentWindAngle = parserNMEA0183.Mwv.WindAngle;
+					if (parserNMEA0183.Mwv.WindSpeedUnits == "N") {
+						// Wind Speed in Knots
+						double apparentWindSpeed = parserNMEA0183.Mwv.WindSpeed;
+					}
+				}
+			}
+		}
+	}
+}
+----
+
+This same library can be used with either the "old" callback API SetNMEASentence or the "new"
+API using the observer listener model.
 
 === Chapter 7. NMEA 2000
 
