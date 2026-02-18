@@ -38,6 +38,9 @@
 // OpenCPN Plugin header
 #include "ocpn_plugin.h"
 
+// Bundled OpenCPN NMEA0183 libraries
+#include "nmea0183.h"
+
 class DemoPlugin : public opencpn_plugin_120 {
 public:
 	// Constructor
@@ -66,6 +69,7 @@ public:
 	void OnContextMenuItemCallback(int id) override;
 	void OnContextMenuItemCallbackExt(int id, std::string obj_ident, std::string obj_type, double lat, double lon) override;
 	void OnToolbarToolCallback(int id) override;
+	void SetNMEASentence(wxString& sentence) override;
 
 private:
 	void LoadSettings();
@@ -78,6 +82,13 @@ private:
 	// Toolbar button Id & state
 	int demoToolbarId;
 	bool isToolbarActive;
+
+	// Persist the data from a wind transducer
+	double apparentWindSpeed; 
+	double apparentWindAngle;
+
+	// Function to parse NMEA0183 MWV sentences
+	void ParseWind(NMEA0183* fart);
 };
 
 #endif 
