@@ -384,6 +384,39 @@ void DemoPlugin::SetNMEASentence(wxString& sentence) {
 This same library can be used with either the "old" callback API SetNMEASentence or the "new"
 API using the observer listener model described in the next sub-chapter.
 
+. The "new" method uses the observer listener model introduced with OpenCPN 5.10. 
+This model may be more efficient for receiving NMEA 0183 data as plugins register to 
+receive only the sentences that are of interest.
+
+Just for the sake of demonstration purposes, OpenCPN also provides  a "Late" or "Delayed" 
+initialization callback for plugins. Generally most of OpenCPN's core services have been started
+by the time a plugin is loaded, however there may be occasions when not all services have been started
+when the plugin has been loaded. In this example, we will use the LateInit callback
+function to register the event handler. This "Late" Init requires the WANTS_LATE_INIT value to be 
+included in the return value for the Init fnction. Plugins then implement the LateInit callback API. 
+
+[source,cpp]
+----
+void DemoPlugin::LateInit() {
+	wxDEFINE_EVENT(EVT_183_VHW, ObservedEvt);
+	NMEA0183Id id_vhw = NMEA0183Id("VHW");
+	listener_vhw = std::move(GetListener(id_vhw, EVT_183_VHW, this));
+	Bind(EVT_183_VHW, [&](ObservedEvt ev) {
+		HandleVHW(ev);
+	});
+}
+----
+
+Plugins then implement the handler for the specific event.
+
+[source,cpp]
+----
+void DemoPlugin::HandleVHW(ObservedEvt ev) {
+	NMEA0183Id id_183_vhw("VHW");
+	wxString sentence = GetN0183Payload(id_183_vhw, ev);
+----
+
+You may then parse the received sentence using the NMEA 0183 libraries as described previously.
 
 === Chapter 8. NMEA 2000
 

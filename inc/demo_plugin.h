@@ -71,7 +71,7 @@ public:
 	void OnToolbarToolCallback(int id) override;
 	void SetPositionFixEx(PlugIn_Position_Fix_Ex& pfix) override;
 	void SetNMEASentence(wxString& sentence) override;
-
+	void LateInit(void) override;
 
 private:
 	void LoadSettings();
@@ -94,13 +94,21 @@ private:
 	double apparentWindAngle;
 	double apparentWindSpeed;
 
+	// Boat speed
+	double boatSpeed;
+
 	// Function to parse NMEA0183 MWV sentences
 	void ParseWind(NMEA0183* nmea0183Sentence);
 
 	// New Observer Listener model handlers
+	
 	// Used instead of SetPositionFix callback API
 	void HandleNavData(ObservedEvt ev);
 	std::shared_ptr<ObservableListener> listener_nav;
+
+	// NMEA 0183 VHW Boat speed
+	void HandleVHW(ObservedEvt ev);
+	std::shared_ptr<ObservableListener> listener_vhw;
 
 };
 

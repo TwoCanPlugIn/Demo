@@ -29,7 +29,7 @@
 // Chapter 4. User interaction - Context Menus
 // Chapter 5. User interaction - Toolbar Buttons
 // Chapter 6. Navigation Data - (6a. Using callback API, 6b. Using Observer/Listener model)
-// Chapter 7. NMEA 0183 - (6a. Receiving data using callback API)
+// Chapter 7. NMEA 0183 - (7a. Receiving data using callback API, 7b. Using Observer/Listener model)
 
 
 #include "demo_plugin.h"
@@ -128,7 +128,7 @@ int DemoPlugin::Init(void) {
 
 	// Notify OpenCPN what callbacks the plugin registers to receive
 	return (WANTS_CONFIG | INSTALLS_TOOLBOX_PAGE | WANTS_PREFERENCES | INSTALLS_TOOLBAR_TOOL
-		| WANTS_NMEA_EVENTS | WANTS_NMEA_SENTENCES);
+		| WANTS_NMEA_EVENTS | WANTS_NMEA_SENTENCES | WANTS_LATE_INIT);
 }
 
 // OpenCPN is either closing down, or the plugin has been disabled from the Preferences Dialog
@@ -136,6 +136,20 @@ bool DemoPlugin::DeInit(void) {
 
 	// Note, OpenCPN doesn't actually care about the return value
 	return true; 
+}
+
+// Unnecessary in this example, however in case a plugin is loaded before OpenCPN core
+// services have been started, it allows a plugin to perform further initialization
+// Requires WANTS_LATE_INIT
+void DemoPlugin::LateInit(void) {
+	// Register subscriber for NMEA 0183 Speed sentence
+	// NMEA 0183 VHW Boat Speed Sentence
+	wxDEFINE_EVENT(EVT_183_VHW, ObservedEvt);
+	NMEA0183Id id_vhw = NMEA0183Id("VHW");
+	listener_vhw = std::move(GetListener(id_vhw, EVT_183_VHW, this));
+	Bind(EVT_183_VHW, [&](ObservedEvt ev) {
+		HandleVHW(ev);
+		});
 }
 
 // OpenCPN Plugin "housekeeping" methods. All plugins MUST implement these
@@ -335,6 +349,21 @@ void DemoPlugin::ParseWind(NMEA0183* nmeaSentence) {
 			wxLogMessage("Demo Plugin, Wind Direction: %0.2f, Wind Speed (knots) %0.2f",
 				apparentWindAngle, apparentWindSpeed);
 		}
+	}
+}
+
+// Parse NMEA 0183 Speed through Water sentence obtained from observer/listener model
+void DemoPlugin::HandleVHW(ObservedEvt ev) {
+
+	NMEA0183Id id_183_vhw("VHW");
+	NMEA0183 parserNMEA0183;
+	wxString sentence = GetN0183Payload(id_183_vhw, ev);
+	parserNMEA0183 << sentence;
+
+	if (parserNMEA0183.Parse()) {
+		// Persist the Speed Through Water value, this will be used
+		// in subsequent chapters.
+		boatSpeed = parserNMEA0183.Vhw.Knots;
 	}
 }
 
