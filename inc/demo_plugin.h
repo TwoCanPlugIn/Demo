@@ -38,6 +38,9 @@
 // OpenCPN Plugin header
 #include "ocpn_plugin.h"
 
+// Bundled OpenCPN NMEA 0183 libraries
+#include "nmea0183.h"
+
 class DemoPlugin : public opencpn_plugin_120, public wxEvtHandler {
 public:
 	// Constructor
@@ -67,6 +70,8 @@ public:
 	void OnContextMenuItemCallbackExt(int id, std::string obj_ident, std::string obj_type, double lat, double lon) override;
 	void OnToolbarToolCallback(int id) override;
 	void SetPositionFixEx(PlugIn_Position_Fix_Ex& pfix) override;
+	void SetNMEASentence(wxString& sentence) override;
+
 
 private:
 	void LoadSettings();
@@ -84,6 +89,13 @@ private:
 	double currentLatitude;
 	double currentLongitude;
 	double trueHeading;
+
+	// Wind angle and speed
+	double apparentWindAngle;
+	double apparentWindSpeed;
+
+	// Function to parse NMEA0183 MWV sentences
+	void ParseWind(NMEA0183* nmea0183Sentence);
 
 	// New Observer Listener model handlers
 	// Used instead of SetPositionFix callback API
