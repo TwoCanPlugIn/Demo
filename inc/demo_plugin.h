@@ -38,7 +38,7 @@
 // OpenCPN Plugin header
 #include "ocpn_plugin.h"
 
-class DemoPlugin : public opencpn_plugin_120 {
+class DemoPlugin : public opencpn_plugin_120, public wxEvtHandler {
 public:
 	// Constructor
 	DemoPlugin(void* ppimgr);
@@ -84,6 +84,12 @@ private:
 	double currentLatitude;
 	double currentLongitude;
 	double trueHeading;
+
+	// New Observer Listener model handlers
+	// Used instead of SetPositionFix callback API
+	void HandleNavData(ObservedEvt ev);
+	std::shared_ptr<ObservableListener> listener_nav;
+
 };
 
 #endif 

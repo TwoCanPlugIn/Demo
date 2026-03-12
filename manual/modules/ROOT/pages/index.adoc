@@ -290,6 +290,39 @@ void DemoPlugin::SetPositionFixEx(PlugIn_Position_Fix_Ex& pfix) {
 }
 ----
 
+. The "new" method uses the observer listener model which was introduced with OpenCPN 5.10. While the older model 
+using callback API's can be used for Navigation Data, NMEA 0183 and internal Messaging, this new model is the only 
+method by which plugins can receive NMEA 2000 data in addition to Navigation Data, NMEA 0183, SignalK and Messaging. 
+In general this model is preferred over using callback API's.
+
+Plugins register their subscribers during initialization and implement an appropriate handler.
+
+[source,cpp]
+----
+// Register handler for OpenCPN Navigation Data observer/listener events
+	wxDEFINE_EVENT(EVT_NAV_DATA, ObservedEvt);
+	listener_nav = std::move(GetListener(NavDataId(), EVT_NAV_DATA, this));
+	Bind(EVT_NAV_DATA, [&](ObservedEvt ev) {
+		HandleNavData(ev);
+		});
+
+----
+
+Remember to ensure the plugin class inherits from the wxWidgets wxEvtHandler class. 
+
+When the handler is invoked, plugins retrieve the event payload and parse as appropriate.
+
+[source,cpp]
+----
+// Handler for Navigation Data events 
+void DemoPlugin::HandleNavData(ObservedEvt ev) {
+	// Persist our current position and heading
+	PluginNavdata navdata = GetEventNavdata(ev);
+	currentLatitude = navdata.lat;
+	currentLongitude = navdata.lon;
+	trueHeading = navdata.hdt;
+}
+----
 
 === Chapter 7. NMEA 0183
 
