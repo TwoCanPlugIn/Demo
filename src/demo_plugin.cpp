@@ -28,7 +28,7 @@
 // Chapter 3. Saving & Loading settings and modifying settings using the toolbox
 // Chapter 4. User interaction - Context Menus
 // Chapter 5. User interaction - Toolbar Buttons
-// Chapter 6. Navigation Data - (6a. Using callback API)
+// Chapter 6. Navigation Data - (6a. Using callback API, 6b. Using Observer/Listener model)
 
 
 #include "demo_plugin.h"
@@ -56,7 +56,7 @@ extern "C" DECL_EXP void destroy_pi(opencpn_plugin* p) {
 
 // Constructor
 // This release is a basic plugin that does not require any "newer" plugin API's beyond API v 1.17
-DemoPlugin::DemoPlugin(void* ppimgr) : opencpn_plugin_120(ppimgr) {
+DemoPlugin::DemoPlugin(void* ppimgr) : opencpn_plugin_120(ppimgr), wxEvtHandler() {
 	
 	// Initialize the plugin bitmap, converting from SVG to PNG. Refer to GetPluginBitmap below
 	// Note the icon file is located in the source repository data folder
@@ -116,6 +116,14 @@ int DemoPlugin::Init(void) {
 
 	// A flag used to indicate the toggled/untoggled state of the toolbar button
 	isToolbarActive = false;
+
+	// Register handler for OpenCPN Navigation Data observer/listener events
+	wxDEFINE_EVENT(EVT_NAV_DATA, ObservedEvt);
+	listener_nav = std::move(GetListener(NavDataId(), EVT_NAV_DATA, this));
+	Bind(EVT_NAV_DATA, [&](ObservedEvt ev) {
+		HandleNavData(ev);
+		});
+
 
 	// Notify OpenCPN what callbacks the plugin registers to receive
 	return (WANTS_CONFIG | INSTALLS_TOOLBOX_PAGE | WANTS_PREFERENCES | INSTALLS_TOOLBAR_TOOL
@@ -264,6 +272,17 @@ void DemoPlugin::SetPositionFixEx(PlugIn_Position_Fix_Ex& pfix) {
 	currentLatitude = pfix.Lat;
 	currentLongitude = pfix.Lon;
 	trueHeading = pfix.Hdt;
+}
+
+// Handler for Navigation Data events, remember handler must be registered and the plugin
+// class inherits from the wxWidgets wxEvtHandler class
+void DemoPlugin::HandleNavData(ObservedEvt ev) {
+	// Persist our current position and heading
+	// We will use the heading value in later chapters
+	PluginNavdata navdata = GetEventNavdata(ev);
+	currentLatitude = navdata.lat;
+	currentLongitude = navdata.lon;
+	trueHeading = navdata.hdt;
 }
 
 void DemoPlugin::LoadSettings() {
