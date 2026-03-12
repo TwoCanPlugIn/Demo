@@ -28,6 +28,7 @@
 // Chapter 3. Saving & Loading settings and modifying settings using the toolbox
 // Chapter 4. User interaction - Context Menus
 // Chapter 5. User interaction - Toolbar Buttons
+// Chapter 6. Navigation Data - (6a. Using callback API)
 
 
 #include "demo_plugin.h"
@@ -117,7 +118,8 @@ int DemoPlugin::Init(void) {
 	isToolbarActive = false;
 
 	// Notify OpenCPN what callbacks the plugin registers to receive
-	return (WANTS_CONFIG | INSTALLS_TOOLBOX_PAGE | WANTS_PREFERENCES | INSTALLS_TOOLBAR_TOOL);
+	return (WANTS_CONFIG | INSTALLS_TOOLBOX_PAGE | WANTS_PREFERENCES | INSTALLS_TOOLBAR_TOOL
+		| WANTS_NMEA_EVENTS);
 }
 
 // OpenCPN is either closing down, or the plugin has been disabled from the Preferences Dialog
@@ -253,6 +255,15 @@ void DemoPlugin::OnToolbarToolCallback(int id) {
 		isToolbarActive = !isToolbarActive;
 		SetToolbarItemState(id, isToolbarActive);
 	}
+}
+
+// Receive Navigation Data from OpenCPN. Requires WANTS_NMEA_EVENTS
+void DemoPlugin::SetPositionFixEx(PlugIn_Position_Fix_Ex& pfix) {
+	// Persist our current position and heading
+	// We will use the heading value in later chapters
+	currentLatitude = pfix.Lat;
+	currentLongitude = pfix.Lon;
+	trueHeading = pfix.Hdt;
 }
 
 void DemoPlugin::LoadSettings() {
