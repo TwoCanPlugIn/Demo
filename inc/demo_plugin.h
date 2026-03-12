@@ -66,6 +66,7 @@ public:
 	void OnContextMenuItemCallback(int id) override;
 	void OnContextMenuItemCallbackExt(int id, std::string obj_ident, std::string obj_type, double lat, double lon) override;
 	void OnToolbarToolCallback(int id) override;
+	void SetPositionFixEx(PlugIn_Position_Fix_Ex& pfix) override;
 
 private:
 	void LoadSettings();
@@ -78,6 +79,11 @@ private:
 	// Toolbar button Id & state
 	int demoToolbarId;
 	bool isToolbarActive;
+
+	// Current position and heading
+	double currentLatitude;
+	double currentLongitude;
+	double trueHeading;
 };
 
 #endif 

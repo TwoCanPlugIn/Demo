@@ -270,22 +270,44 @@ is toggled while the message box is displayed using the SetToolbarItemState func
 
 image::demo_plugin-15.png
 
-=== Chapter 6. NMEA 0183
+=== Chapter 6. Navigation Data
 
-=== Chapter 7. NMEA 2000
+OpenCPN provides plugins with navigation data; Speed Over Ground (SOG), Course Over Ground (COG), 
+Heading (True and Magnetic), Latitude and Longitude once per second.
 
-=== Chapter 8. SignalK
+There are two mechanisms for receiving this data.
+
+. The "old" mechanism uses callback API's SetPositionFix (excludes heading) or SetPositionFixEx which
+the plugin registers during the Init function by returning the value WANTS_NMEA_EVENTS.
+
+[source,cpp]
+----
+void DemoPlugin::SetPositionFixEx(PlugIn_Position_Fix_Ex& pfix) {
+	// Persist our current position and heading.
+	currentLatitude = pfix.Lat;
+	currentLongitude = pfix.Lon;
+	trueHeading = pfix.Hdt;
+}
+----
+
+
+=== Chapter 7. NMEA 0183
+
+=== Chapter 8. NMEA 2000
 
 === Chapter 9. OCPN Messaging
 
-=== Chapter 10. Routes & Waypoints
+=== Chapter 10. SignalK
 
-=== Chapter 11. Drawing on Canvas (non OpenGL)
+=== Chapter 11. Routes & Waypoints
 
-=== Chapter 12. Drawing on Canvas (OpenGL)
+=== Chapter 12. Drawing on Canvas (non OpenGL)
 
-=== Chapter 13. wxWidgets Advanced User Interface
-Chapter 14. Chart
+=== Chapter 13. Drawing on Canvas (OpenGL)
+
+=== Chapter 14. wxWidgets Advanced User Interface
+
+=== Chapter 15. Chart
 
 
 == 5. FAQ
