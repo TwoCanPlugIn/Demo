@@ -30,7 +30,7 @@
 // Chapter 5. User interaction - Toolbar Buttons
 // Chapter 6. Navigation Data - (6a. Using callback API, 6b. Using Observer/Listener model)
 // Chapter 7. NMEA 0183 - (7a. Receiving data using callback API, 7b. Using Observer/Listener model)
-
+//            NMEA 0183 - (7c. Transmitting Data using PushNMEABuffer API)
 
 #include "demo_plugin.h"
 
@@ -298,6 +298,12 @@ void DemoPlugin::HandleNavData(ObservedEvt ev) {
 	currentLatitude = navdata.lat;
 	currentLongitude = navdata.lon;
 	trueHeading = navdata.hdt;
+
+	// As this is invoked by OpenCPN once per second, also use this to generate true wind
+	// sentences, using data received from wind and boat speed NMEA 0183 sentences
+	CalculateTrueWind();
+	// Generate the NMEA 0183 MWV sentence and transmit it.
+	PushNMEABuffer(FormatTrueWindSentence());
 }
 
 // The "old" method for receiving NMEA 0183 data. The plugin will receive all sentences
@@ -367,6 +373,41 @@ void DemoPlugin::HandleVHW(ObservedEvt ev) {
 	}
 }
 
+// Given heading, boat speed and apparent wind angle and speed, calculate true wind angle and direction
+void DemoPlugin::CalculateTrueWind(void) {
+
+	if (apparentWindAngle < 180.0f) {
+		trueWindAngle = 90.0f - (180.0f / M_PI * atan((apparentWindSpeed * cos(apparentWindAngle * M_PI / 180.0f) - boatSpeed) / (apparentWindSpeed * sin(apparentWindAngle * M_PI / 180.0f))));
+	}
+	else if (apparentWindAngle > 180.0f) {
+		trueWindAngle = 360.0f - (90.0f - (180.0f / M_PI * atan((apparentWindSpeed * cos((180.0f - (apparentWindAngle - 180.0f)) * M_PI / 180.0f) - boatSpeed) / (apparentWindSpeed * sin((180.0f - (apparentWindAngle - 180.0f)) * M_PI / 180.0f)))));
+	}
+	else {
+		trueWindAngle = 180.0f;
+	}
+	trueWindSpeed = sqrt(pow((apparentWindSpeed * cos(apparentWindAngle * M_PI / 180.0f)) - boatSpeed, 2) + pow(apparentWindSpeed * sin(apparentWindAngle * M_PI / 180.0f), 2));
+
+	trueWindDirection = fmod(trueWindAngle + trueHeading, 360.0f);
+}
+
+
+// Generate NMEA 0183 MWV Sentence using OpenCPN support library 
+wxString DemoPlugin::FormatTrueWindSentence(void) {
+	NMEA0183 NMEA0183parser;
+	SENTENCE NMEASentence;
+
+	NMEA0183parser.TalkerID = "II";
+	NMEA0183parser.Mwv.Empty();
+	NMEA0183parser.Mwv.WindAngle = trueWindAngle;
+	NMEA0183parser.Mwv.Reference = "T";
+	NMEA0183parser.Mwv.WindSpeed = trueWindSpeed;
+	NMEA0183parser.Mwv.WindSpeedUnits = "N";
+	NMEA0183parser.Mwv.IsDataValid = NTrue;
+
+	NMEA0183parser.Mwv.Write(NMEASentence);
+
+	return NMEASentence.Sentence;
+}
 
 void DemoPlugin::LoadSettings() {
 	wxFileConfig* configSettings = GetOCPNConfigObject();
