@@ -93,9 +93,16 @@ private:
 	// Wind angle and speed
 	double apparentWindAngle;
 	double apparentWindSpeed;
+	double trueWindAngle;
+	double trueWindSpeed;
+	double trueWindDirection;
 
 	// Boat speed
 	double boatSpeed;
+
+	// Calculate and Generate NMEA 0183 True Wind sentences
+	void CalculateTrueWind(void);
+	wxString FormatTrueWindSentence(void);
 
 	// Function to parse NMEA0183 MWV sentences
 	void ParseWind(NMEA0183* nmea0183Sentence);
