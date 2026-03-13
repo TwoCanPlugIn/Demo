@@ -516,6 +516,67 @@ if (result != RESULT_COMM_NO_ERROR) {
 
 === Chapter 8. NMEA 2000
 
+NMEA 2000 support for OpenCPN was only recently introduced and required a new connection mechansm which resuted
+in the Observer/Listener model that is now also used for NMEA 0183, SignalK and Messaging.
+
+Similar to described above, Plugins register for the NMEA 2000 Parameeter Group Numbers (PGN's) that are of interest.
+For example the following snippet registers the plugin to receive PGN 130306 which encodes Wind Speed and Direction
+
+[source,cpp]
+----
+// Register subscriber for PGN 130306 Wind
+wxDEFINE_EVENT(EVT_N2K_130306, ObservedEvt);
+NMEA2000Id id_130306 = NMEA2000Id(130306);
+listener_130306 = std::move(GetListener(id_130306, EVT_N2K_130306, this));
+Bind(EVT_N2K_130306, [&](ObservedEvt ev) {
+	HandleN2K_130306(ev);
+	});
+----
+
+Again, plugins implement the handler to receive and parse the NMEA 2000 data. Unlike NMEA 0183 where the sentences
+are ASCII text, NMEA 2000 uses a binary format and some bit twiddling is required to parse the data. 
+OpenCPN bundles NMEA 2000 libraries, that parse most of the standard PGN's. These libraries are 
+derived from Timo Lappalainen's libraries (https://github.com/ttlappalainen). For proprietary PGN's (for example used by 
+commercial vendors for configuration, autopilots, media players etc.) you will need to implement your own parsers. 
+
+[source,cpp]
+----
+// Parse NMEA 2000 PGN 128269 message (Boat Speed)
+void DemoPlugin::HandleN2K_128259(ObservedEvt ev) {
+	NMEA2000Id id_128259(128259);
+	std::vector<uint8_t> payload = GetN2000Payload(id_128259, ev);
+	unsigned char sequenceId;
+	double boatSpeedWaterReferenced;
+	double boatSpeedGroundReferenced;
+	tN2kSpeedWaterReferenceType waterReferenceType;
+
+	if (ParseN2kPGN128259(payload, sequenceId, boatSpeedWaterReferenced, boatSpeedGroundReferenced, waterReferenceType)) {
+		// Convert from NMEA 2000 SI units which are m/s to OpenCPN's core units
+		boatSpeed = fromUsrSpeed_Plugin(boatSpeedWaterReferenced, 3);
+	}
+}
+----
+
+Note that the payload as returned from GetN2000Payload is not simply the NMEA 2000 message, but is encapsulated as an Actisense
+NGT-1 frame. If you are parsing the payload using your own library, you will need to "unpack" this format yourself. 
+A text representation of the binary payload, once the Data Link Escape (DLE), 
+Start of Transmission (STX) and End of Transmission (ETX) delimiters have been removed is:
+
+93 13 02 01 F8 01 FF 01 76 C2 52 00 08 08 70 EB 14 E8 8E 52 D2 BB 10
+
+This decodes as:
+command (1 byte)	 0x93	Value = 0x93 indicates NGT-1 format
+length (1 byte)		 0x13	Length of frame excluding command, length and CRC
+priority (1 byte)    0x02	NMEA 2000 priorty
+PGN (3 bytes)        0x01	0xF8 0x01 Decodes to PGN 129025
+destination(1 byte)  0xFF	Destination Address (NMEA 2000 Broadcast Address)
+source (1 byte)      0x01   Source Address
+timestamp (4 bytes)  0x76 0xC2 0x52 0x00 Time in milliseconds
+data length (1 byte) 0x08	Actual NMEA 2000 payload length
+data (data length)   08 70 EB 14 E8 8E 52 D2 NMEA 2000 data
+checksum (1 byte)	 BB		Ensures sum of characters % 256 equals 0
+
+
 === Chapter 9. OCPN Messaging
 
 === Chapter 10. SignalK
