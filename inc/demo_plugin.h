@@ -41,6 +41,9 @@
 // Bundled OpenCPN NMEA 0183 libraries
 #include "nmea0183.h"
 
+// Bundled OpenCPN NMEA 2000 libraries
+#include "N2KParser.h"
+
 class DemoPlugin : public opencpn_plugin_120, public wxEvtHandler {
 public:
 	// Constructor
@@ -124,6 +127,14 @@ private:
 	// NMEA 0183 VHW Boat speed
 	void HandleVHW(ObservedEvt ev);
 	std::shared_ptr<ObservableListener> listener_vhw;
+
+	// NMEA 2000 Boat speed
+	void HandleN2K_128259(ObservedEvt ev);
+	std::shared_ptr<ObservableListener> listener_128259;
+
+	// NMEA 2000 Wind Speed
+	void HandleN2K_130306(ObservedEvt ev);
+	std::shared_ptr<ObservableListener> listener_130306;
 
 };
 

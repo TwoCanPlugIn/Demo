@@ -32,6 +32,7 @@
 // Chapter 7. NMEA 0183 - (7a. Receiving data using callback API, 7b. Using Observer/Listener model)
 //            NMEA 0183 - (7c. Transmitting Data using PushNMEABuffer API)
 //			  NMEA 0183 - (7d. Transmitting Data using Observer/Lisyener model)
+// Chapter 8. NMEA 2000 - (8a. Receiving NMEA 2000 data)
 
 #include "demo_plugin.h"
 
@@ -139,12 +140,11 @@ bool DemoPlugin::DeInit(void) {
 	return true; 
 }
 
-// Unnecessary to use Late Iitialization in this example, however in case a plugin is loaded 
+// Unnecessary to use Late Initialization in this example, however in case a plugin is loaded 
 // before OpenCPN core services have been started, it allows a plugin to perform further 
 // initialization. Requires WANTS_LATE_INIT
 void DemoPlugin::LateInit(void) {
-	// Register subscriber for NMEA 0183 Speed sentence
-	// NMEA 0183 VHW Boat Speed Sentence
+	// Register subscriber for NMEA 0183 VHW Speed sentence
 	wxDEFINE_EVENT(EVT_183_VHW, ObservedEvt);
 	NMEA0183Id id_vhw = NMEA0183Id("VHW");
 	listener_vhw = std::move(GetListener(id_vhw, EVT_183_VHW, this));
@@ -157,6 +157,24 @@ void DemoPlugin::LateInit(void) {
 	if (nmea0183Driver.size() > 0) {
 		wxLogMessage("Demo Plugin, Using outbound network connection: %s", nmea0183Driver);
 	}
+
+	// Register subscriber for PGN 130306 Wind
+	wxDEFINE_EVENT(EVT_N2K_130306, ObservedEvt);
+	NMEA2000Id id_130306 = NMEA2000Id(130306);
+	listener_130306 = std::move(GetListener(id_130306, EVT_N2K_130306, this));
+	Bind(EVT_N2K_130306, [&](ObservedEvt ev) {
+		HandleN2K_130306(ev);
+		});
+
+	
+	// Register Subcriber for PGN 128259 Boat Speed
+	wxDEFINE_EVENT(EVT_N2K_128259, ObservedEvt);
+	NMEA2000Id id_128259 = NMEA2000Id(128259);
+	listener_128259 = std::move(GetListener(id_128259, EVT_N2K_128259, this));
+	Bind(EVT_N2K_128259, [&](ObservedEvt ev) {
+		HandleN2K_128259(ev);
+		});
+
 }
 
 // OpenCPN Plugin "housekeeping" methods. All plugins MUST implement these
@@ -449,6 +467,36 @@ void DemoPlugin::SendNMEA0183(const std::string& sentence) {
 	CommDriverResult result = WriteCommDriver(nmea0183Driver, sharedPointer);
 	if (result != RESULT_COMM_NO_ERROR) {
 		wxLogMessage("Demo Plugin, Error sending NMEA 0183 Sentence: %d", result);
+	}
+}
+
+void DemoPlugin::HandleN2K_128259(ObservedEvt ev) {
+	NMEA2000Id id_128259(128259);
+	std::vector<uint8_t> payload = GetN2000Payload(id_128259, ev);
+	unsigned char sid;
+	double boatSpeedWaterReferenced;
+	double boatSpeedGroundReferenced;
+	tN2kSpeedWaterReferenceType waterReferenceType;
+
+	if (ParseN2kPGN128259(payload, sid, boatSpeedWaterReferenced, boatSpeedGroundReferenced, waterReferenceType)) {
+		// Convert from NMEA 2000 SI units which are m/s to OpenCPN's core units
+		boatSpeed = fromUsrSpeed_Plugin(boatSpeedWaterReferenced, 3);
+	}
+}
+
+// Parse NMEA 2000 Wind message
+void DemoPlugin::HandleN2K_130306(ObservedEvt ev) {
+	NMEA2000Id id_130306(130306);
+	std::vector<uint8_t> payload = GetN2000Payload(id_130306, ev);
+	unsigned char sid;
+	double windSpeed;
+	double windAngle;
+	tN2kWindReference windReferenceType;
+
+	if (ParseN2kPGN130306(payload, sid, windSpeed, windAngle, windReferenceType)) {
+		// Convert from m/s and radians to OpenCPN's core units
+		apparentWindSpeed = fromUsrSpeed_Plugin(windSpeed, 3);
+		apparentWindAngle = windAngle * 180 / M_PI;
 	}
 }
 
