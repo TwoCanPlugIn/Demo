@@ -1,10 +1,10 @@
-= Audiopilot
+= Demo Plugin
 
 == Links
 
-Source: https://github.com/twocanplugin/demo_plugin[Github Repository]
+Source: https://github.com/twocanplugin/demo[Github Repository]
 
-Releases: https://github.com/audiopilot/demo_plugin/releases[Github Releases]
+Releases: https://github.com/audiopilot/demo/releases[Github Releases]
 
 
 Forum:
@@ -13,7 +13,7 @@ Forum Demo Plugin Thread]
 
 == 1. What and Why
 
-Demo Plugin
+Demo Plugin - A plugin that may be of use to plugin developers learning to use the OpenCPN plugin API's
 
 == 2. Install
 
@@ -103,7 +103,7 @@ image::demo_plugin-04.png
 
 In addition the plugin dumps some of the OpenCPN standard folder paths and user's measurement units into the OpenCPN log file
 using wxLogMessage. This OpenCPN log is the preferred mechanism for plugins to log messages. To log important error messages, 
-you can also us wxLogError.
+you can also use wxLogError.
 
 === Chapter 2. Configuration (Default Settings)
 
@@ -278,7 +278,8 @@ Heading (True and Magnetic), Latitude and Longitude once per second.
 There are two mechanisms for receiving this data.
 
 . The "old" mechanism uses callback API's SetPositionFix (excludes heading) or SetPositionFixEx which
-the plugin registers during the Init function by returning the value WANTS_NMEA_EVENTS.
+the plugin registers during the Init function by returning the value WANTS_NMEA_EVENTS. Plugins then override 
+SetPositionFix or SetPositionFixEx as appropriate. 
 
 [source,cpp]
 ----
@@ -464,6 +465,54 @@ PushNMEABuffer(data);
 You can verify the generation of NMEA 0183 using the Data Monitor.
 
 image::demo_plugin-16.png
+
+. The "new" method uses the Observer/Listener model. Plugins need to obtain a "handle" to an OpenCPN connection. All
+connections, irrespective of interface (serial/usb, udp, tcp), protocol (NMEA 0183, NMEA 2000, SignalK) and direction (in, out, in/out)
+expose a driver handle.
+
+Each connection's properties are stored in an unordered map of string key/value pairs, for example:
+protocol, nmea0183
+ioDirection, OUT
+
+The connections are stored in a vector of the unordered maps. The API GetActiveDrivers returns the vector containing
+all of the drivers. Each driver is then used as the argument to the GetAttributes API to retrieve the unordered map.
+
+For example to find an outbound nmea0183 interface:
+
+[source,cpp]
+----
+std::string FindNMEA0183Interface() {
+	for (const auto& driver : GetActiveDrivers()) {
+		const auto& attributes = GetAttributes(driver);
+		
+		auto protocolIterator = attributes.find("protocol");
+		auto directionIterator = attributes.find("ioDirection");
+		
+		if (protocolIterator != attributes.end() && directionIterator != attributes.end()) {
+			// Find a connection matching the required connection and io direction
+			if ((protocolIterator->second == "nmea0183") && ((directionIterator->second == "OUT") || 
+				(directionIterator->second == "IN/OUT"))) {
+				return driver;
+			}
+		}
+	}
+	return {};
+}
+----
+
+The plugin then uses the returned handle when writing to the interface using the WriteCommDriver API.
+(Note, that although the handle is a string value, the handle is meant to be opaque)
+
+[source,cpp]
+----
+std::string sentence = "$GPGLL,3825.70,S,14433.31,E ,150531.70.00,A,A*76";
+std::vector<uint8_t> payload(sentence.begin(), sentence.end());
+auto sharedPointer = std::make_shared<std::vector<uint8_t> >(std::move(payload));
+CommDriverResult result = WriteCommDriver(networkHandle, sharedPointer);
+if (result != RESULT_COMM_NO_ERROR) {
+	wxLogMessage("Demo Plugin, Error sending NMEA 0183 Sentence: %d", result);
+}
+----
 
 === Chapter 8. NMEA 2000
 
