@@ -31,6 +31,7 @@
 // Chapter 6. Navigation Data - (6a. Using callback API, 6b. Using Observer/Listener model)
 // Chapter 7. NMEA 0183 - (7a. Receiving data using callback API, 7b. Using Observer/Listener model)
 //            NMEA 0183 - (7c. Transmitting Data using PushNMEABuffer API)
+//			  NMEA 0183 - (7d. Transmitting Data using Observer/Lisyener model)
 
 #include "demo_plugin.h"
 
@@ -56,7 +57,7 @@ extern "C" DECL_EXP void destroy_pi(opencpn_plugin* p) {
 }
 
 // Constructor
-// This release is a basic plugin that does not require any "newer" plugin API's beyond API v 1.17
+// As the plugin uses newer functions, it requires a plugin API version of at least 1.20
 DemoPlugin::DemoPlugin(void* ppimgr) : opencpn_plugin_120(ppimgr), wxEvtHandler() {
 	
 	// Initialize the plugin bitmap, converting from SVG to PNG. Refer to GetPluginBitmap below
@@ -138,9 +139,9 @@ bool DemoPlugin::DeInit(void) {
 	return true; 
 }
 
-// Unnecessary in this example, however in case a plugin is loaded before OpenCPN core
-// services have been started, it allows a plugin to perform further initialization
-// Requires WANTS_LATE_INIT
+// Unnecessary to use Late Iitialization in this example, however in case a plugin is loaded 
+// before OpenCPN core services have been started, it allows a plugin to perform further 
+// initialization. Requires WANTS_LATE_INIT
 void DemoPlugin::LateInit(void) {
 	// Register subscriber for NMEA 0183 Speed sentence
 	// NMEA 0183 VHW Boat Speed Sentence
@@ -150,6 +151,12 @@ void DemoPlugin::LateInit(void) {
 	Bind(EVT_183_VHW, [&](ObservedEvt ev) {
 		HandleVHW(ev);
 		});
+
+	// Find an outbound connection to use with WriteCommDriver
+	nmea0183Driver = FindOutboundConnection("nmea0183");
+	if (nmea0183Driver.size() > 0) {
+		wxLogMessage("Demo Plugin, Using outbound network connection: %s", nmea0183Driver);
+	}
 }
 
 // OpenCPN Plugin "housekeeping" methods. All plugins MUST implement these
@@ -303,7 +310,12 @@ void DemoPlugin::HandleNavData(ObservedEvt ev) {
 	// sentences, using data received from wind and boat speed NMEA 0183 sentences
 	CalculateTrueWind();
 	// Generate the NMEA 0183 MWV sentence and transmit it.
-	PushNMEABuffer(FormatTrueWindSentence());
+	//PushNMEABuffer(FormatTrueWindSentence());
+	// This is using the "new" Observer/Listener model.
+	// Only transmit if we have a valid outbound nmea0183 connection
+	if (nmea0183Driver.size() > 0) {
+		SendNMEA0183(FormatTrueWindSentence().ToStdString()); \
+	}
 }
 
 // The "old" method for receiving NMEA 0183 data. The plugin will receive all sentences
@@ -407,6 +419,37 @@ wxString DemoPlugin::FormatTrueWindSentence(void) {
 	NMEA0183parser.Mwv.Write(NMEASentence);
 
 	return NMEASentence.Sentence;
+}
+
+// Helper function to find required driver handles
+std::string DemoPlugin::FindOutboundConnection(const std::string& connectionType) {
+	// Iterate through all of the OpenCPN connections
+	for (const auto& driver : GetActiveDrivers()) {
+		const auto& attributes = GetAttributes(driver);
+
+		auto protocolIterator = attributes.find("protocol");
+		auto directionIterator = attributes.find("ioDirection");
+
+		if (protocolIterator != attributes.end() && directionIterator != attributes.end()) {
+			// Found a connection matching the required connection and io direction
+			if ((connectionType == protocolIterator->second) && ((directionIterator->second == "OUT")
+				|| (directionIterator->second == "IN/OUT"))) {
+				return driver;
+			}
+		}
+	}
+	return {};
+}
+
+// Send NMEA 0183 Sentence using observer/listener model
+void DemoPlugin::SendNMEA0183(const std::string& sentence) {
+	std::vector<uint8_t> payload(sentence.begin(), sentence.end());
+
+	auto sharedPointer = std::make_shared<std::vector<uint8_t> >(std::move(payload));
+	CommDriverResult result = WriteCommDriver(nmea0183Driver, sharedPointer);
+	if (result != RESULT_COMM_NO_ERROR) {
+		wxLogMessage("Demo Plugin, Error sending NMEA 0183 Sentence: %d", result);
+	}
 }
 
 void DemoPlugin::LoadSettings() {

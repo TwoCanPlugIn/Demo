@@ -97,7 +97,7 @@ private:
 	double trueWindSpeed;
 	double trueWindDirection;
 
-	// Boat speed
+	// Speed Through Water
 	double boatSpeed;
 
 	// Calculate and Generate NMEA 0183 True Wind sentences
@@ -106,6 +106,14 @@ private:
 
 	// Function to parse NMEA0183 MWV sentences
 	void ParseWind(NMEA0183* nmea0183Sentence);
+
+	// Helper function to find a required connection
+	std::string FindOutboundConnection(const std::string& connectionType);
+
+	// Transmit data using observer/listener model
+	// An interface for a NMEA 0183 connection
+	DriverHandle nmea0183Driver;
+	void SendNMEA0183(const std::string& sentence);
 
 	// New Observer Listener model handlers
 	
