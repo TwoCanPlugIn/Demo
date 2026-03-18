@@ -103,9 +103,14 @@ private:
 	// Speed Through Water
 	double boatSpeed;
 
-	// Calculate and Generate NMEA 0183 True Wind sentences
+	// Calculate True Wind
 	void CalculateTrueWind(void);
+
+	// Generate NMEA 0183 MWV Sentence for True Wind Angle
 	wxString FormatTrueWindSentence(void);
+
+	// Generate NMEA 2000 PGN 130306 message for True Wind Angle
+	std::vector<uint8_t> FormatTrueWindMessage(void);
 
 	// Function to parse NMEA0183 MWV sentences
 	void ParseWind(NMEA0183* nmea0183Sentence);
@@ -113,10 +118,16 @@ private:
 	// Helper function to find a required connection
 	std::string FindOutboundConnection(const std::string& connectionType);
 
-	// Transmit data using observer/listener model
+	// Transmit NMEA 0183 data using observer/listener model
 	// An interface for a NMEA 0183 connection
 	DriverHandle nmea0183Driver;
-	void SendNMEA0183(const std::string& sentence);
+	void SendNMEA0183(const std::string& driverHandle, const std::string& sentence);
+
+	// Transmit NMEA 2000 data using observer/listener model
+	// An interface for a NMEA 2000 connection
+	DriverHandle nmea2000Driver;
+	void SendNMEA2000(const std::string& driverHandle, const unsigned char& destination, 
+		const unsigned char& priority,	const unsigned int pgn,	std::vector<uint8_t>& payload);
 
 	// New Observer Listener model handlers
 	
