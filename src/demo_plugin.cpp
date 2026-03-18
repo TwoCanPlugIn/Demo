@@ -33,6 +33,7 @@
 //            NMEA 0183 - (7c. Transmitting Data using PushNMEABuffer API)
 //			  NMEA 0183 - (7d. Transmitting Data using Observer/Lisyener model)
 // Chapter 8. NMEA 2000 - (8a. Receiving NMEA 2000 data)
+//			  NMEA 2000 - (8b. Transmitting NMEA 2000 data)
 
 #include "demo_plugin.h"
 
@@ -152,10 +153,10 @@ void DemoPlugin::LateInit(void) {
 		HandleVHW(ev);
 		});
 
-	// Find an outbound connection to use with WriteCommDriver
+	// Find an outbound NMEA 0183 connection to use with WriteCommDriver
 	nmea0183Driver = FindOutboundConnection("nmea0183");
 	if (nmea0183Driver.size() > 0) {
-		wxLogMessage("Demo Plugin, Using outbound network connection: %s", nmea0183Driver);
+		wxLogMessage("Demo Plugin, Using outbound NMEA 0183 network connection: %s", nmea0183Driver);
 	}
 
 	// Register subscriber for PGN 130306 Wind
@@ -174,6 +175,18 @@ void DemoPlugin::LateInit(void) {
 	Bind(EVT_N2K_128259, [&](ObservedEvt ev) {
 		HandleN2K_128259(ev);
 		});
+
+	// Find an outbound NMEA 2000 connection to use with WriteCommDriverN2K
+	nmea2000Driver = FindOutboundConnection("nmea2000");
+	if (!nmea2000Driver.empty()) {
+		wxLogMessage("Demo Plugin, Using outbound NMEA 2000 network connection: %s", nmea2000Driver);
+		// For the NMEA 2000 interface, plugins need to register what NMEA 2000 PGN's they transmit.
+		// This is required for Actisense NGT-1 Adapters
+		// Presumably results in a null operation (NOP) for other NMEA 2000 adapters
+		// In this demo plugin We will only transmit PGN 130306 Wind Speed and Direction
+		std::vector<int> transmittedPGN = { 130306 }; 
+		RegisterTXPGNs(nmea2000Driver, transmittedPGN);
+	}
 
 }
 
@@ -328,11 +341,21 @@ void DemoPlugin::HandleNavData(ObservedEvt ev) {
 	// sentences, using data received from wind and boat speed NMEA 0183 sentences
 	CalculateTrueWind();
 	// Generate the NMEA 0183 MWV sentence and transmit it.
-	//PushNMEABuffer(FormatTrueWindSentence());
+	// This is using the "old" API.
+	// PushNMEABuffer(FormatTrueWindSentence());
+	
 	// This is using the "new" Observer/Listener model.
 	// Only transmit if we have a valid outbound nmea0183 connection
-	if (nmea0183Driver.size() > 0) {
-		SendNMEA0183(FormatTrueWindSentence().ToStdString()); \
+	if (!nmea0183Driver.empty()) {
+		wxString sentence = FormatTrueWindSentence();
+		SendNMEA0183(nmea0183Driver, sentence.ToStdString());
+	}
+
+	// Transmit NMEA 2000 message using Observer/Listener model
+	// Only transmit if we have a valid outbound nmea2000 connection
+	if (!nmea2000Driver.empty()) {
+		std::vector<uint8_t> payload = FormatTrueWindMessage();
+		SendNMEA2000(nmea2000Driver, 255, 4, 130306, payload);
 	}
 }
 
@@ -421,7 +444,7 @@ void DemoPlugin::CalculateTrueWind(void) {
 }
 
 
-// Generate NMEA 0183 MWV Sentence using OpenCPN support library 
+// Generate NMEA 0183 MWV Sentence for True Wind Angle, using OpenCPN support library 
 wxString DemoPlugin::FormatTrueWindSentence(void) {
 	NMEA0183 NMEA0183parser;
 	SENTENCE NMEASentence;
@@ -460,43 +483,81 @@ std::string DemoPlugin::FindOutboundConnection(const std::string& connectionType
 }
 
 // Send NMEA 0183 Sentence using observer/listener model
-void DemoPlugin::SendNMEA0183(const std::string& sentence) {
+void DemoPlugin::SendNMEA0183(const std::string& driverHandle, const std::string& sentence) {
 	std::vector<uint8_t> payload(sentence.begin(), sentence.end());
 
 	auto sharedPointer = std::make_shared<std::vector<uint8_t> >(std::move(payload));
-	CommDriverResult result = WriteCommDriver(nmea0183Driver, sharedPointer);
+	CommDriverResult result = WriteCommDriver(driverHandle, sharedPointer);
 	if (result != RESULT_COMM_NO_ERROR) {
 		wxLogMessage("Demo Plugin, Error sending NMEA 0183 Sentence: %d", result);
 	}
 }
 
+// Note for NMEA 2000 data. 
+// The payload is not "a NMEA 2000 payload" but an Actisense NGT-1 payload (Don't ask!)
+// 
+// The text representation of the binary payload once the Data Link Escape (DLE), 
+// Start of Transmission (STX) and End of Transmission (ETX) delimiters have been removed is:
+// 93 13 02 01 F8 01 FF 01 76 C2 52 00 08 08 70 EB 14 E8 8E 52 D2 BB 10
+// This decodes as:
+// command (1 byte)		0x93 Value = 0x93 indicates NGT-1 format
+// length (1 byte)	    0x13 Length of frame excluding command, length and CRC
+// priority (1 byte)    0x02
+// PGN (3 bytes)        0x01 0xF8 0x01
+// destination(1 byte)  0xFF
+// source (1 byte)      0x01
+// timestamp (4 bytes)  0x76 0xC2 0x52 0x00
+// data length (1 byte) 0x08
+// data (data length)   08 70 EB 14 E8 8E 52 D2
+// checksum (1 byte)	BB Ensures sum of characters % 256 equals 0
+// However the bundled NMEA 2000 parsers handle the "unpacking"
+
+// Parse NMEA 2000 PGN 128269 message (Boat Speed)
 void DemoPlugin::HandleN2K_128259(ObservedEvt ev) {
 	NMEA2000Id id_128259(128259);
 	std::vector<uint8_t> payload = GetN2000Payload(id_128259, ev);
-	unsigned char sid;
+	unsigned char sequenceId;
 	double boatSpeedWaterReferenced;
 	double boatSpeedGroundReferenced;
 	tN2kSpeedWaterReferenceType waterReferenceType;
 
-	if (ParseN2kPGN128259(payload, sid, boatSpeedWaterReferenced, boatSpeedGroundReferenced, waterReferenceType)) {
+	if (ParseN2kPGN128259(payload, sequenceId, boatSpeedWaterReferenced, boatSpeedGroundReferenced, waterReferenceType)) {
 		// Convert from NMEA 2000 SI units which are m/s to OpenCPN's core units
 		boatSpeed = fromUsrSpeed_Plugin(boatSpeedWaterReferenced, 3);
 	}
 }
 
-// Parse NMEA 2000 Wind message
+// Parse NMEA 2000 PGN 130306 message (Wind Speed & Angle)
 void DemoPlugin::HandleN2K_130306(ObservedEvt ev) {
 	NMEA2000Id id_130306(130306);
 	std::vector<uint8_t> payload = GetN2000Payload(id_130306, ev);
-	unsigned char sid;
+	unsigned char sequenceId;
 	double windSpeed;
 	double windAngle;
 	tN2kWindReference windReferenceType;
 
-	if (ParseN2kPGN130306(payload, sid, windSpeed, windAngle, windReferenceType)) {
-		// Convert from m/s and radians to OpenCPN's core units
+	if (ParseN2kPGN130306(payload, sequenceId, windSpeed, windAngle, windReferenceType)) {
+		// Convert from SI Units, m/s and radians to OpenCPN's core units
 		apparentWindSpeed = fromUsrSpeed_Plugin(windSpeed, 3);
 		apparentWindAngle = windAngle * 180 / M_PI;
+	}
+}
+
+// Generate NMEA 2000 PGN 130306 message with True Wind Angle
+std::vector<uint8_t> DemoPlugin::FormatTrueWindMessage(void) {
+	tN2kMsg msg130306;
+	SetN2kWindSpeed(msg130306, 1, trueWindSpeed, trueWindAngle, tN2kWindReference::N2kWind_True_boat);
+	std::vector<uint8_t> data(msg130306.Data, msg130306.Data + msg130306.DataLen);
+	return data;
+}
+
+// Send NMEA 2000 message
+void DemoPlugin::SendNMEA2000(const std::string& driverHandle, const unsigned char& destination,
+	const unsigned char& priority, const unsigned int pgn, std::vector<uint8_t>& payload) {
+	auto sharedPointer = std::make_shared<std::vector<uint8_t>>(payload);
+	CommDriverResult result = WriteCommDriverN2K(driverHandle, pgn, destination, priority, sharedPointer);
+	if (result != RESULT_COMM_NO_ERROR) {
+		wxLogMessage("Demo Plugin, Error sending NMEA 2000 PGN %d: %d", pgn, result);
 	}
 }
 
