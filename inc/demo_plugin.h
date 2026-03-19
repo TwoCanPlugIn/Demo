@@ -44,6 +44,12 @@
 // Bundled OpenCPN NMEA 2000 libraries
 #include "N2KParser.h"
 
+// Bundled OpenCPN JSON libraries
+#include "wx/json_defs.h"
+#include "wx/jsonreader.h"
+#include "wx/jsonval.h"
+#include "wx/jsonwriter.h"
+
 class DemoPlugin : public opencpn_plugin_120, public wxEvtHandler {
 public:
 	// Constructor
@@ -129,6 +135,9 @@ private:
 	DriverHandle nmea2000Driver;
 	void SendNMEA2000(const std::string& driverHandle, const unsigned char& destination, 
 		const unsigned char& priority,	const unsigned int pgn,	std::vector<uint8_t>& payload);
+
+	// Generate JSON message for True Wind Angle
+	wxString FormatTrueWindJSON(void);
 
 	// New Observer Listener model handlers
 	
