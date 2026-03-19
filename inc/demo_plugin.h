@@ -75,6 +75,7 @@ public:
 	void SetPositionFixEx(PlugIn_Position_Fix_Ex& pfix) override;
 	void SetNMEASentence(wxString& sentence) override;
 	void LateInit(void) override;
+	void SetPluginMessage(wxString& message_id, wxString& message_body) override;
 
 private:
 	void LoadSettings();

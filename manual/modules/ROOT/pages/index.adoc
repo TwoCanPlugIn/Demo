@@ -653,6 +653,56 @@ image::demo_plugin-17.png
 
 === Chapter 9. OCPN Messaging
 
+OpenCPN messaging is a mechanism that allows both OpenCPN to communicate with Plugins and for 
+plugins to communicate with one another. Messages are identified with a message id and the data 
+is usually formatted using Java Script Object Notation (JSON).
+
+Some of the well known OpenCPN Messages include:
+
+GLOBAL_SETTINGS_UPDATED
+OpenCPN Config
+OCPN_CORE_SIGNALK
+OCPN_OPENGL_CONFIG
+WMM_VARIATION_BOAT
+WMM_VARIATION_BOAT_REQUEST
+WMM_WINDOW_SHOWN
+WMM_WINDOW_HIDDEN
+AIS
+OCPN_WPT_ACTIVATED
+OCPN_WPT_DEACTIVATED
+OCPN_WPT_ARRIVED
+OCPN_RTE_ACTIVATED
+OCPN_RTE_DEACTIVATED
+OCPN_RTE_ENDED
+OCPN_RTE_REQUEST
+GRIB_VALUES
+
+Similar to NMEA 0183, there are two ways to receive and to generate an OpenCPN message; the old 
+mechanism using a Callback API SetPluginMessage to receive messages and the API SendPluginMessage 
+transmit a message. The second mechanism uses the Observer/Listener model where plugin register to 
+receive specific message id's and use the API WriteCommDriver to send a message.
+
+As messages in general are formatted using JSON, plugins can use the included wxJSON library to 
+parse or encode messages.
+
+==== Using the "old" mechanism to receive messages.
+
+To receive messages, plugins need to implement the SetPluginMessage callback API. The two
+parameters to the API are the message id and the message body. The plugin must include the 
+value WANTS_PLUGIN_MESSAGING in the return value of the Init function.
+
+In this example we'll just log the message generated whenever a waypoint is activated. 
+The next chapter about SignalK will provide an example of parsing the JSON data. 
+
+[source, cpp]
+----
+void DemoPlugin::SetPluginMessage(wxString& message_id, wxString& message_body) {
+	if (message_id == "OCPN_WPT_ACTIVATED") {
+		wxLogMessage("Demo Plugin, Waypoint activated: %s", message_body);
+	}
+}
+----
+
 === Chapter 10. SignalK
 
 === Chapter 11. Routes & Waypoints

@@ -34,6 +34,7 @@
 //			  NMEA 0183 - (7d. Transmitting Data using Observer/Lisyener model)
 // Chapter 8. NMEA 2000 - (8a. Receiving NMEA 2000 data)
 //			  NMEA 2000 - (8b. Transmitting NMEA 2000 data)
+// Chapter 9. Plugin Messaging - (9a. Receiving messages using callback API)
 
 #include "demo_plugin.h"
 
@@ -131,7 +132,7 @@ int DemoPlugin::Init(void) {
 
 	// Notify OpenCPN what callbacks the plugin registers to receive
 	return (WANTS_CONFIG | INSTALLS_TOOLBOX_PAGE | WANTS_PREFERENCES | INSTALLS_TOOLBAR_TOOL
-		| WANTS_NMEA_EVENTS | WANTS_NMEA_SENTENCES | WANTS_LATE_INIT);
+		| WANTS_NMEA_EVENTS | WANTS_NMEA_SENTENCES | WANTS_LATE_INIT | WANTS_PLUGIN_MESSAGING);
 }
 
 // OpenCPN is either closing down, or the plugin has been disabled from the Preferences Dialog
@@ -558,6 +559,15 @@ void DemoPlugin::SendNMEA2000(const std::string& driverHandle, const unsigned ch
 	CommDriverResult result = WriteCommDriverN2K(driverHandle, pgn, destination, priority, sharedPointer);
 	if (result != RESULT_COMM_NO_ERROR) {
 		wxLogMessage("Demo Plugin, Error sending NMEA 2000 PGN %d: %d", pgn, result);
+	}
+}
+
+// Receive OpenCPN Messages, the "old" way
+// Requires WANTS_PLUGIN_MESSAGING
+void DemoPlugin::SetPluginMessage(wxString& message_id, wxString& message_body) {
+	// We'll just log the received message without parsing the message body.
+	if (message_id == "OCPN_WPT_ACTIVATED") {
+		wxLogMessage("Demo Plugin, Waypoint activated: %s", message_body);
 	}
 }
 
