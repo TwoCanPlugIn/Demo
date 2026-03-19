@@ -35,6 +35,7 @@
 // Chapter 8. NMEA 2000 - (8a. Receiving NMEA 2000 data)
 //			  NMEA 2000 - (8b. Transmitting NMEA 2000 data)
 // Chapter 9. Plugin Messaging - (9a. Receiving messages using callback API)
+//            Plugin Messaging - (9b. Transmit messages using SendPluginMessage API)
 
 #include "demo_plugin.h"
 
@@ -358,6 +359,10 @@ void DemoPlugin::HandleNavData(ObservedEvt ev) {
 		std::vector<uint8_t> payload = FormatTrueWindMessage();
 		SendNMEA2000(nmea2000Driver, 255, 4, 130306, payload);
 	}
+
+	// Transmit an OpenCPN Plugin message using the "old" method
+	wxString jsonMessage = FormatTrueWindJSON();
+	SendPluginMessage("Demo_Plugin", jsonMessage);
 }
 
 // The "old" method for receiving NMEA 0183 data. The plugin will receive all sentences
@@ -569,6 +574,21 @@ void DemoPlugin::SetPluginMessage(wxString& message_id, wxString& message_body) 
 	if (message_id == "OCPN_WPT_ACTIVATED") {
 		wxLogMessage("Demo Plugin, Waypoint activated: %s", message_body);
 	}
+}
+
+// Generate a plugin-specific JSON Message, encoding true wind speed and angle
+// Using the bundled wxJSON library to encode the JSON data
+wxString DemoPlugin::FormatTrueWindJSON(void) {
+	wxJSONValue root;
+	wxJSONWriter writer;
+	wxString data;
+	root["truewind"]["windangle"] = trueWindAngle;
+	root["truewind"]["windspeed"] = trueWindSpeed;
+	if (root.Size() > 0) {
+		writer.Write(root, data);
+		return data;
+	}
+	return {};
 }
 
 void DemoPlugin::LoadSettings() {

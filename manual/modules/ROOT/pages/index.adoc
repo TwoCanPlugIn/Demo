@@ -703,6 +703,31 @@ void DemoPlugin::SetPluginMessage(wxString& message_id, wxString& message_body) 
 }
 ----
 
+==== Using the "old" mechanism to transmit messages.
+
+As plugin messages are generally encoded as JSON, this demo will use the bundled wxJSON library 
+to encode the message, which will simple be the calculated true wind angle and true wind speed.
+
+[source,cpp]
+----
+wxJSONValue root;
+wxJSONWriter writer;
+wxString data;
+root["truewind"]["windangle"] = trueWindAngle;
+root["truewind"]["windspeed"] = trueWindSpeed;
+writer.Write(root, data);
+----
+
+To transmit the message, which can potentially be received and consumed by any other plugin, 
+the SendPluginMessage API is invoked.
+
+[source,cpp]
+----
+SendPluginMessage("Demo_Plugin", data);
+----
+
+image::demo_plugin-18.png
+
 === Chapter 10. SignalK
 
 === Chapter 11. Routes & Waypoints

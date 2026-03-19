@@ -84,7 +84,7 @@ macro(add_plugin_libraries)
     add_subdirectory(opencpn-libs/n2kparser)
     target_link_libraries(${PACKAGE_NAME} ocpn::N2KParser)
 
-    #add_subdirectory(opencpn-libs/wxJSON)
-    #target_link_libraries(${PACKAGE_NAME} ocpn::wxjson)
+    add_subdirectory(opencpn-libs/wxJSON)
+    target_link_libraries(${PACKAGE_NAME} ocpn::wxjson)
 
 endmacro ()
