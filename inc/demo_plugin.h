@@ -157,6 +157,10 @@ private:
 	void HandleN2K_130306(ObservedEvt ev);
 	std::shared_ptr<ObservableListener> listener_130306;
 
+	// OpenCPN Plugin Messaging
+	void HandleMsg_RouteActivated(ObservedEvt ev);
+	std::shared_ptr<ObservableListener> listener_route;
+
 };
 
 #endif 
