@@ -36,6 +36,7 @@
 //			  NMEA 2000 - (8b. Transmitting NMEA 2000 data)
 // Chapter 9. Plugin Messaging - (9a. Receiving messages using callback API)
 //            Plugin Messaging - (9b. Transmit messages using SendPluginMessage API)
+//			  Plugin Messaging - (9c. Receiving messages using Observer/Listener model)
 
 #include "demo_plugin.h"
 
@@ -189,6 +190,14 @@ void DemoPlugin::LateInit(void) {
 		std::vector<int> transmittedPGN = { 130306 }; 
 		RegisterTXPGNs(nmea2000Driver, transmittedPGN);
 	}
+
+	// Register subscriber for OpenCPN Plugin Messaging
+	wxDEFINE_EVENT(EVT_OCPN_MSG, ObservedEvt);
+	PluginMsgId msg_id = PluginMsgId("OCPN_RTE_ACTIVATED");
+	listener_route = std::move(GetListener(msg_id, EVT_OCPN_MSG, this));
+	Bind(EVT_OCPN_MSG, [&](ObservedEvt ev) {
+		HandleMsg_RouteActivated(ev);
+		});
 
 }
 
@@ -589,6 +598,37 @@ wxString DemoPlugin::FormatTrueWindJSON(void) {
 		return data;
 	}
 	return {};
+}
+
+// The "new" method for receiving Plugin Messages
+// In this example subscribing to Route Activation messages
+void DemoPlugin::HandleMsg_RouteActivated(ObservedEvt ev) {
+	wxJSONValue root;
+	wxJSONReader jsonReader;
+	PluginMsgId msg_id = PluginMsgId("OCPN_RTE_ACTIVATED");
+	std::string message_body = GetPluginMsgPayload(msg_id, ev);
+	int jsonErrorCount = jsonReader.Parse(message_body, &root);
+	if (jsonErrorCount > 0) {
+		wxLogMessage("Demo Plugin, JSON Error in %s", message_body);
+		wxArrayString jsonErrorStrings = jsonReader.GetErrors();
+		for (auto &it : jsonErrorStrings) {
+			wxLogMessage("Demo Plugin, JSON Error: %s",it);
+		}
+		return;
+	}
+	else {
+		wxString routeName;
+		wxString guid;
+		if (root.HasMember("Route_activated")) {
+			routeName = root["Route_activated"].AsString();
+		}
+		if (root.HasMember("GUID")) {
+			guid = root["GUID"].AsString();
+		}
+		// Just display the route name and globally unique Id (GUID). In a later chapter 
+		// we'll demonstrate retrieving the route details using it's guid
+		wxMessageBox(wxString::Format("Destination: %s\nGUID: %s", routeName, guid), "Demo Plugin");
+	}
 }
 
 void DemoPlugin::LoadSettings() {

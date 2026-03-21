@@ -728,6 +728,61 @@ SendPluginMessage("Demo_Plugin", data);
 
 image::demo_plugin-18.png
 
+==== Using the "new" Observer/Listener model to receive Plugin messages.
+
+Using the observer listener model introduced with OpenCPN 5.10, plugins register to 
+receive only the Plugin messages that are of interest. In this example, route activation.
+
+[source,cpp]
+----
+wxDEFINE_EVENT(EVT_OCPN_MSG, ObservedEvt);
+	PluginMsgId msg_id = PluginMsgId("OCPN_RTE_ACTIVATED");
+	listener_route = std::move(GetListener(msg_id, EVT_OCPN_MSG, this));
+	Bind(EVT_OCPN_MSG, [&](ObservedEvt ev) {
+		HandleMsg_RouteActivated(ev);
+		});
+----
+
+Plugins then handle the received message using the by now familiar boilerplate code used by 
+Observer/Listener message handlers, namely;
+
+[source,cpp]
+----
+void DemoPlugin::HandleMsg_RouteActivated(ObservedEvt ev) {
+	PluginMsgId msg_id = PluginMsgId("OCPN_RTE_ACTIVATED");
+	std::string message_body = GetPluginMsgPayload(msg_id, ev);
+}
+----
+
+Using the bundled wxJSON libraries, plugins may parse the received JSON data. In this example
+parsing the JSON data that accompanies a Route Activation plugin message.
+
+[source,cpp]
+----
+wxJSONValue root;
+wxJSONReader jsonReader;
+int errors = jsonReader.Parse(message_body, &root);
+if (errors > 0) {
+	wxLogMessage("Demo Plugin, JSON Error in %s", message_body);
+	wxArrayString jsonErrors = jsonReader.GetErrors();
+	for (auto &it : jsonErrors) {
+		wxLogMessage(it);
+	}
+	return;
+}
+else {
+	wxString route_name;
+	wxString guid;
+	if (root.HasMember("Route_activated")) {
+		route_name = root["Route_activated"].AsString();
+	}
+	if (root.HasMember("GUID")) {
+		guid = root["GUID"].AsString();
+	}
+	// Do something useful with the route name and globally unique id (GUID)
+}
+----
+
 === Chapter 10. SignalK
 
 === Chapter 11. Routes & Waypoints
