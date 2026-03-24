@@ -144,6 +144,10 @@ private:
 	// Generate JSON message for True Wind Angle
 	wxString FormatTrueWindJSON(void);
 
+	// Parse SignalK update messages
+	wxString selfURN;
+	void HandleSKUpdate(wxJSONValue& update);
+
 	// New Observer Listener model handlers
 	
 	// Used instead of SetPositionFix callback API

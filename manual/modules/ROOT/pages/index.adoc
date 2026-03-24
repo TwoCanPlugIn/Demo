@@ -838,6 +838,71 @@ if (result != RESULT_COMM_NO_ERROR) {
 
 === Chapter 10. SignalK
 
+There are two mechanism that can be used to receive SignalK data; the "old" method using
+OpenCPN Plugin Messaging and the "new" method usingthe observer/listener model. 
+Note that connections to SignalK are read only, you cannot send SignalK updates from OpenCPN.
+
+==== Using OpenCPN Plugin Messaging to receive SignalK data
+
+OpenCPN makes SignalK data available to plugins using Plugin Messaging. It uses the message id
+"OCPN_CORE_SIGNALK" and the message body contains the SignalK data as JSON formatted text.
+
+Having received a Plugin Message containing a SignalK update, plugins can use the bundled 
+wxJSON libraries to parse the data. As SignalK can store information from multiple vessels, 
+you can use the "self" URN to match with a "context" to only parse SignalK updates that 
+pertain to the vessel associated with the SignalK Server instance.
+
+[source,cpp]
+----
+void DemoPlugin::SetPluginMessage(wxString& message_id, wxString& message_body) {
+	if (message_id == "OCPN_CORE_SIGNALK") {
+		wxJSONValue root;
+		wxJSONReader jsonReader;
+		jsonReader.Parse(message_body, &root);
+
+		// Persist our "self urn
+		if (root.HasMember("self") && root["self"].IsString() ) {
+			selfURN = root["self"].AsString();
+		}
+
+		// Only parse updates for our own vessel
+		if (root.HasMember("context") && root["context"].IsString()) {
+			wxString context = root["context"].AsString();
+			if (context == selfURN) {
+				if (root.HasMember("updates") && root["updates"].IsArray()) {
+					wxJSONValue updates = root["updates"];
+					for (int i = 0; i < updates.Size(); i++) {
+						HandleSKUpdate(updates[i]);
+					}
+				}
+			}
+		}
+	}
+}
+----
+
+The following snippet demonstrates how to obtain the water depth from a SignalK update.
+Refer to the SignalK Keys Reference to understand the SignalK data paths.
+
+[source,cpp]
+----
+DemoPlugin::HandleSKUpdate(wxJSONValue& update) {
+	if (update.HasMember("values") && update["values"].IsArray()) {
+		for (int j = 0; j < update["values"].Size(); j++) {
+			wxJSONValue& item = update["values"][j];
+			if (item.HasMember("path") && item.HasMember("value")) {
+				// In this demo plugin, we're only interested in depth
+				if (item["path"].AsString() == "environment.depth.belowSurface") {
+					double waterDepth = item["value"].AsDouble();
+					// Do something useful with the water depth value, eg shallow water alarm?
+					wxLogMessage("Demo Plugin, Water Depth: %0.2f", waterDepth);
+				}
+			}
+		}
+	}
+}
+----
+
 === Chapter 11. Routes & Waypoints
 
 === Chapter 12. Drawing on Canvas (non OpenGL)

@@ -31,12 +31,14 @@
 // Chapter 6. Navigation Data - (6a. Using callback API, 6b. Using Observer/Listener model)
 // Chapter 7. NMEA 0183 - (7a. Receiving data using callback API, 7b. Using Observer/Listener model)
 //            NMEA 0183 - (7c. Transmitting Data using PushNMEABuffer API)
-//			  NMEA 0183 - (7d. Transmitting Data using Observer/Lisyener model)
+//			  NMEA 0183 - (7d. Transmitting Data using Observer/Listener model)
 // Chapter 8. NMEA 2000 - (8a. Receiving NMEA 2000 data)
 //			  NMEA 2000 - (8b. Transmitting NMEA 2000 data)
 // Chapter 9. Plugin Messaging - (9a. Receiving messages using callback API)
 //            Plugin Messaging - (9b. Transmit messages using SendPluginMessage API)
 //			  Plugin Messaging - (9c. Receiving messages using Observer/Listener model)
+//			  Plugin Messaging - (9d. Transmit messages  using Observer/Listener model)
+// Chapter 10. SignalK - (10a. Receive SignalK updates using Plugin Messaging)
 
 #include "demo_plugin.h"
 
@@ -593,9 +595,49 @@ void DemoPlugin::SendNMEA2000(const std::string& driverHandle, const unsigned ch
 // Receive OpenCPN Messages, the "old" way
 // Requires WANTS_PLUGIN_MESSAGING
 void DemoPlugin::SetPluginMessage(wxString& message_id, wxString& message_body) {
-	// We'll just log the received message without parsing the message body.
+	// We'll just log the Waypoint Activated message without parsing the message body.
 	if (message_id == "OCPN_WPT_ACTIVATED") {
 		wxLogMessage("Demo Plugin, Waypoint activated: %s", message_body);
+	}
+
+	// Receive SignalK updates 
+	else if (message_id == "OCPN_CORE_SIGNALK") {
+		wxJSONValue root;
+		wxJSONReader jsonReader;
+		int error = jsonReader.Parse(message_body, &root);
+		if (error > 0) {
+			wxLogMessage("Demo Plugin, JSON Error in following");
+			wxLogMessage("%s", message_body);
+			wxArrayString jsonErrors = jsonReader.GetErrors();
+			for (auto it : jsonErrors) {
+				wxLogMessage(it);
+			}
+			return;
+		}
+
+		// Upon initial connection, SignalK identifies the vessels for which it stores information
+		// We only want to receive updates for the "self" context
+		// Eg. "self":"urn:mrn:signalk:uuid:1cb1a66a-814c-4478-8b84-701eec9524bb" 
+		// or "self":"vessels.urn:mrn:imo:mmsi:235123456"
+		// We can then match self with a context and only parse those updates 
+		// Eg. "context":"vessels.urn:mrn:signalk:uuid:1cb1a66a-814c-4478-8b84-701eec9524bb"
+
+		if (root.HasMember("self") && root["self"].IsString() ) {
+			selfURN = root["self"].AsString();
+		}
+
+		if (root.HasMember("context") && root["context"].IsString()) {
+			wxString context = root["context"].AsString();
+			// Only parse updates for our own vessel
+			if (context == selfURN) {
+				if (root.HasMember("updates") && root["updates"].IsArray()) {
+					wxJSONValue updates = root["updates"];
+					for (int i = 0; i < updates.Size(); i++) {
+						HandleSKUpdate(updates[i]);
+					}
+				}
+			}
+		}
 	}
 }
 
@@ -652,6 +694,23 @@ void DemoPlugin::SendJSONMessage(const std::string& driverHandle, const std::str
 	CommDriverResult result = WriteCommDriver(driverHandle, sharedPointer);
 	if (result != RESULT_COMM_NO_ERROR) {
 		wxLogMessage("Demo Plugin, Error sending Plugin Message: %d", result);
+	}
+}
+
+// Parse SignalK updates
+void DemoPlugin::HandleSKUpdate(wxJSONValue& update) {
+	if (update.HasMember("values") && update["values"].IsArray()) {
+		for (int i = 0; i < update["values"].Size(); i++) {
+			wxJSONValue& item = update["values"][i];
+			if (item.HasMember("path") && item.HasMember("value")) {
+				// In this demo plugin, we're only interested in depth
+				if (item["path"].AsString() == "environment.depth.belowSurface") {
+					double waterDepth = item["value"].AsDouble();
+					// Could so something useful with the water depth value, eg shallow water alarm?
+					wxLogMessage("Demo Plugin, Water Depth: %0.2f", waterDepth);
+				}
+			}
+		}
 	}
 }
 
