@@ -199,6 +199,12 @@ void DemoPlugin::LateInit(void) {
 		HandleMsg_RouteActivated(ev);
 		});
 
+	// Find an interface for Plugin Messaging
+	messagingDriver = FindOutboundConnection("internal");
+	if (messagingDriver.size() > 0) {
+		wxLogMessage("Demo Plugin, Using outbound internal connection: %s", messagingDriver);
+	}
+	
 }
 
 // OpenCPN Plugin "housekeeping" methods. All plugins MUST implement these
@@ -285,7 +291,7 @@ void DemoPlugin::OnSetupOptions(void) {
 	toolboxSizer->Add(demoToolbox, 1, wxALL | wxEXPAND);
 }
 
-// Invoked from he plugin's preferences option, enabling the user to modify the plugin's settings.
+// Invoked from the plugin's preferences option, enabling the user to modify the plugin's settings.
 // Requires WANTS_PREFERENCES
 void DemoPlugin::ShowPreferencesDialog(wxWindow* parent) {
 	auto demoSettings = std::make_unique<DemoSettings>(parent, wxID_ANY, _("Demo Preferences"));
@@ -371,7 +377,15 @@ void DemoPlugin::HandleNavData(ObservedEvt ev) {
 
 	// Transmit an OpenCPN Plugin message using the "old" method
 	wxString jsonMessage = FormatTrueWindJSON();
-	SendPluginMessage("Demo_Plugin", jsonMessage);
+	// SendPluginMessage("Demo_Plugin", jsonMessage);
+
+	// Transmit an OpenCPN Plugin message using the "new" method
+	// Note the space between the message id and message body
+	wxString pluginMessage = "Demo_Plugin " + jsonMessage;
+
+	if (!messagingDriver.empty()) {
+		SendJSONMessage(messagingDriver, pluginMessage.ToStdString());
+	}
 }
 
 // The "old" method for receiving NMEA 0183 data. The plugin will receive all sentences
@@ -626,10 +640,21 @@ void DemoPlugin::HandleMsg_RouteActivated(ObservedEvt ev) {
 			guid = root["GUID"].AsString();
 		}
 		// Just display the route name and globally unique Id (GUID). In a later chapter 
-		// we'll demonstrate retrieving the route details using it's guid
+		// we'll demonstrate retrieving the route details using its guid
 		wxMessageBox(wxString::Format("Destination: %s\nGUID: %s", routeName, guid), "Demo Plugin");
 	}
 }
+
+// Send a Plugin Message using the "new" observer/listener model.
+void DemoPlugin::SendJSONMessage(const std::string& driverHandle, const std::string& message) {
+	std::vector<uint8_t> payload(message.begin(), message.end());
+	auto sharedPointer = std::make_shared<std::vector<uint8_t> >(std::move(payload));
+	CommDriverResult result = WriteCommDriver(driverHandle, sharedPointer);
+	if (result != RESULT_COMM_NO_ERROR) {
+		wxLogMessage("Demo Plugin, Error sending Plugin Message: %d", result);
+	}
+}
+
 
 void DemoPlugin::LoadSettings() {
 	wxFileConfig* configSettings = GetOCPNConfigObject();
