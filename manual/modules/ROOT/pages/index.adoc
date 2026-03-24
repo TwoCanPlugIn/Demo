@@ -783,6 +783,59 @@ else {
 }
 ----
 
+==== Using the "new" Observer/Listener model to transmit Plugin messages.
+
+Similar to transmitting NMEA 0183 sentences and NMEA 2000 messages using the observer/listener
+model, plugins can also send plugin messages using the "new" mechanism.
+
+Plugins retrieve a handle to the "internal" driver using the same method described previously
+for obtaining handles for NMEA 0183 or NMEA 2000 interfaces.
+
+[source,cpp]
+----
+std::string FindInternalInterface() {
+	for (const auto& driver : GetActiveDrivers()) {
+		const auto& attributes = GetAttributes(driver);
+		
+		auto protocolIterator = attributes.find("protocol");
+		auto directionIterator = attributes.find("ioDirection");
+		
+		if (protocolIterator != attributes.end() && directionIterator != attributes.end()) {
+			// Find a connection matching the required connection and io direction
+			if ((protocolIterator->second == "internal") && ((directionIterator->second == "OUT") || 
+				(directionIterator->second == "IN/OUT"))) {
+				return driver;
+			}
+		}
+	}
+	return {};
+}
+----
+
+Having obtained a driver handle, plugins then send the message in a similar way as previously
+described for sending a NMEA 0183 sentence. The major difference is that the string value must
+be formatted as follows:
+message id <SPACE> message data.
+
+For example:
+[source,cpp]
+----
+std::string jsonData = "{\"truewind\":{\"windangle\":176.50,\"windspeed\" : 10.34}}";
+std::string pluginMessage = "DEMO_MESSAGE_ID " + jsonData; // Note space after message id
+----
+
+The API WriteCommDriver is then used to send the plugin message.
+
+[source,cpp]
+----
+std::vector<uint8_t> payload(pluginMessage.begin(), pluginMessage.end());
+auto sharedPointer = std::make_shared<std::vector<uint8_t> >(std::move(payload));
+CommDriverResult result = WriteCommDriver(driverHandle, sharedPointer);
+if (result != RESULT_COMM_NO_ERROR) {
+	wxLogMessage("Demo Plugin, Error sending Plugin Message: %d", result);
+}
+----
+
 === Chapter 10. SignalK
 
 === Chapter 11. Routes & Waypoints

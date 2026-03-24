@@ -136,6 +136,11 @@ private:
 	void SendNMEA2000(const std::string& driverHandle, const unsigned char& destination, 
 		const unsigned char& priority,	const unsigned int pgn,	std::vector<uint8_t>& payload);
 
+	// Transmit Plugin Messages using observer/listener model
+	// The internal interface for Plugin Messsaging
+	DriverHandle messagingDriver;
+	void SendJSONMessage(const std::string& driverHandle, const std::string& message);
+
 	// Generate JSON message for True Wind Angle
 	wxString FormatTrueWindJSON(void);
 
