@@ -39,6 +39,7 @@
 //			  Plugin Messaging - (9c. Receiving messages using Observer/Listener model)
 //			  Plugin Messaging - (9d. Transmit messages  using Observer/Listener model)
 // Chapter 10. SignalK - (10a. Receive SignalK updates using Plugin Messaging)
+//			   SignalK - (10b. Receive SignalK updates using Observer/Listener model)
 
 #include "demo_plugin.h"
 
@@ -207,6 +208,13 @@ void DemoPlugin::LateInit(void) {
 		wxLogMessage("Demo Plugin, Using outbound internal connection: %s", messagingDriver);
 	}
 	
+	// Register Subscriber for SignalK 
+	wxDEFINE_EVENT(EVT_SIGNALK, ObservedEvt);
+	SignalkId id_signalk = SignalkId("self");
+	listener_signalk = std::move(GetListener(id_signalk, EVT_SIGNALK, this));
+	Bind(EVT_SIGNALK, [&](ObservedEvt ev) {
+		HandleSignalK(ev);
+		});
 }
 
 // OpenCPN Plugin "housekeeping" methods. All plugins MUST implement these
@@ -708,6 +716,38 @@ void DemoPlugin::HandleSKUpdate(wxJSONValue& update) {
 					double waterDepth = item["value"].AsDouble();
 					// Could so something useful with the water depth value, eg shallow water alarm?
 					wxLogMessage("Demo Plugin, Water Depth: %0.2f", waterDepth);
+				}
+			}
+		}
+	}
+}
+
+// Receive SignalK update using observer/listener model
+void DemoPlugin::HandleSignalK(ObservedEvt ev) {
+	// OpenCPN "packages" up the SignalK update, including the self context
+	auto payload = GetSignalkPayload(ev);
+	const auto signalKMessage = *std::static_pointer_cast<const wxJSONValue>(payload);
+	auto errorCount = signalKMessage.ItemAt("ErrorCount");
+	if (errorCount.AsInt() > 0) {
+		wxLogMessage("Demo Plugin, SignalK Error Count: %d", errorCount.AsInt());
+		return;
+	}
+
+	// Retrieve the Self Context and the SignalK Data
+	// Note unlike using Plugin Messaging to receive SignalK updates
+	// OpenCPN determines the self context and adds it to the OpenCPN SignalK payload.
+	wxJSONValue self = signalKMessage.ItemAt("ContextSelf");
+	wxJSONValue root = signalKMessage.ItemAt("Data");
+
+	// Only interested in displaying data for our own vessel
+	if (root.HasMember("context") && root["context"].IsString()) {
+		wxString context = root["context"].AsString();
+			if (context == self.AsString()) {
+			// Parse the data
+			if (root.HasMember("updates") && root["updates"].IsArray()) {
+				wxJSONValue updates = root["updates"];
+				for (int i = 0; i < updates.Size(); i++) {
+					HandleSKUpdate(updates[i]);
 				}
 			}
 		}

@@ -170,6 +170,9 @@ private:
 	void HandleMsg_RouteActivated(ObservedEvt ev);
 	std::shared_ptr<ObservableListener> listener_route;
 
+	// OpenCPN SignalK
+	void HandleSignalK(ObservedEvt ev);
+	std::shared_ptr<ObservableListener> listener_signalk;
 };
 
 #endif 
