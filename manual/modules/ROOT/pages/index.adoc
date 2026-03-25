@@ -903,6 +903,57 @@ DemoPlugin::HandleSKUpdate(wxJSONValue& update) {
 }
 ----
 
+==== Receiving SignalK data using Observer/Listener model
+
+To use the observer/listener model to receive SignalK data, plugins register a subscription
+for SignalK.
+
+[source,cpp]
+----
+wxDEFINE_EVENT(EVT_SIGNALK, ObservedEvt);
+SignalkId id_signalk = SignalkId("self");
+listener_signalk = std::move(GetListener(id_signalk, EVT_SIGNALK, this));
+Bind(EVT_SIGNALK, [&](ObservedEvt ev) {
+	HandleSignalK(ev);
+	});
+----
+
+And implement the handler. The payload returned to the handler by the OpenCPN SignalK 
+event is JSON text, with a JSON value "ErrorCount" indicating if there are any JSON 
+parsing errors, a value "ContextSelf" containing the "self" URN and another JSON value 
+"data" containing the raw SignalK data. Plugins can then parse the SignalK values using 
+the same mechanism as described previously.
+
+[source,cpp]
+----
+void DemoPlugin::HandleSignalK(ObservedEvt ev) {
+	auto payload = GetSignalkPayload(ev);
+	const auto signalKMessage = *std::static_pointer_cast<const wxJSONValue>(payload);
+	auto errorCount = signalKMessage.ItemAt("ErrorCount");
+	if (errorCount.AsInt() > 0) {
+		wxLogMessage("Demo Plugin, SignalK Error Count: %d", errorCount.AsInt());
+		return;
+	}
+
+	wxJSONValue self = signalKMessage.ItemAt("ContextSelf");
+	wxJSONValue root = signalKMessage.ItemAt("Data");
+	// Check if the context matches our "self" URN
+	if (root.HasMember("context") && root["context"].IsString()) {
+		wxString context = root["context"].AsString();
+			if (context == self.AsString()) {
+			// Parse the data
+			if (root.HasMember("updates") && root["updates"].IsArray()) {
+				wxJSONValue updates = root["updates"];
+				for (int i = 0; i < updates.Size(); i++) {
+					HandleSKUpdate(updates[i]);
+				}
+			}
+		}
+	}
+}
+
+-----
+
 === Chapter 11. Routes & Waypoints
 
 === Chapter 12. Drawing on Canvas (non OpenGL)
