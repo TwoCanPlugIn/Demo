@@ -43,6 +43,7 @@
 // Chapter 11. Routes and Waypoints - (11a. Retrieve Waypoints)
 //			   Routes and Waypoints - (11b. Retrieve Routes)
 //			   Routes and Waypoints - (11c. Adding a Waypoint)
+//			   Routes and Waypoints - (11d. Modifying a Waypoint)
 
 #include "demo_plugin.h"
 
@@ -342,7 +343,8 @@ void DemoPlugin::OnToolbarToolCallback(int id) {
 		// Note toggling the state of the toolbar while the message box is displayed
 		isToolbarActive = !isToolbarActive;
 		SetToolbarItemState(id, isToolbarActive);
-		CreateWaypoint();
+		ModifyWaypoint();
+		//CreateWaypoint();
 		//GetAllRoutes();
 		//GetAllWaypoints();
 		//wxMessageBox(wxString::Format("Demo Toolbar invoked, Id: %d", id), "Demo Plugin");
@@ -808,6 +810,29 @@ void DemoPlugin::CreateWaypoint() {
 	waypoint.m_lat = currentLatitude;
 	waypoint.m_lon = currentLongitude;
 	AddSingleWaypoint(&waypoint, true);
+}
+
+// Update the existing "Demo" waypoint and add range rings
+void DemoPlugin::ModifyWaypoint() {
+	// First of all, find the the "Demo" waypoint
+	wxArrayString waypointGuids = GetWaypointGUIDArray();
+	PlugIn_Waypoint_ExV2 waypoint;
+	for (auto waypointGUID : waypointGuids) {
+		GetSingleWaypointExV2(waypointGUID, &waypoint);
+		if (waypoint.m_MarkName.CmpNoCase("Demo") == 0) {
+			// Update the range rings, two rings, at a distance of 1Nm, coloured purple
+			waypoint.nrange_rings = 2;
+			waypoint.RangeRingSpace = 1.0;
+			waypoint.RangeRingColor = wxColour(128, 0, 128);
+			if (UpdateSingleWaypointExV2(&waypoint)) {
+				return;
+			}
+			else {
+				wxMessageBox("Error updating Demo waypoint", "Demo Plugin");
+			}
+		}
+	}
+	wxMessageBox("Demo waypoint was not found", "Demo Plugin");
 }
 
 void DemoPlugin::LoadSettings() {
