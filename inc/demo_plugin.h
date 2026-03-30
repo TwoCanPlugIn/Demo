@@ -88,6 +88,7 @@ private:
 	void SaveSettings();
 
 	void GetAllWaypoints();
+	void GetAllRoutes();
 
 	// Context Menu Id's
 	int demoContextMenuId;

@@ -41,6 +41,7 @@
 // Chapter 10. SignalK - (10a. Receive SignalK updates using Plugin Messaging)
 //			   SignalK - (10b. Receive SignalK updates using Observer/Listener model)
 // Chapter 11. Routes and Waypoints - (11a. Retrieve Waypoints)
+//			   Routes and Waypoints - (11b. Retrieve Routes)
 
 #include "demo_plugin.h"
 
@@ -340,7 +341,8 @@ void DemoPlugin::OnToolbarToolCallback(int id) {
 		// Note toggling the state of the toolbar while the message box is displayed
 		isToolbarActive = !isToolbarActive;
 		SetToolbarItemState(id, isToolbarActive);
-		GetAllWaypoints();
+		GetAllRoutes();
+		//GetAllWaypoints();
 		//wxMessageBox(wxString::Format("Demo Toolbar invoked, Id: %d", id), "Demo Plugin");
 		isToolbarActive = !isToolbarActive;
 		SetToolbarItemState(id, isToolbarActive);
@@ -693,7 +695,19 @@ void DemoPlugin::HandleMsg_RouteActivated(ObservedEvt ev) {
 		}
 		// Just display the route name and globally unique Id (GUID). In a later chapter 
 		// we'll demonstrate retrieving the route details using its guid
-		wxMessageBox(wxString::Format("Destination: %s\nGUID: %s", routeName, guid), "Demo Plugin");
+		//wxMessageBox(wxString::Format("Destination: %s\nGUID: %s", routeName, guid), "Demo Plugin");
+
+		// Use the route GUID to retrieve the route details, including the waypoints
+		auto routeDetails = GetRoute_Plugin(guid);
+		auto waypointList = routeDetails->pWaypointList;
+		wxString result;
+		for (Plugin_WaypointList::iterator it = waypointList->begin();
+			it != waypointList->end(); ++it) {
+			auto waypoint = *it;
+			result.append(wxString::Format("\n%s %0.2f %0.2f", waypoint->m_MarkName,
+				waypoint->m_lat, waypoint->m_lon));
+		}
+		wxMessageBox(result, "Route " + routeDetails->m_NameString + " from " + routeDetails->m_StartString);
 	}
 }
 
@@ -735,6 +749,19 @@ void DemoPlugin::GetAllWaypoints() {
 			waypointDetails.m_lat, waypointDetails.m_lon));
 	}
 	wxMessageBox(result, "Waypoints");
+}
+
+// Retrieve all routes and display a few attributes in a simple message box
+void DemoPlugin::GetAllRoutes() {
+	wxArrayString routeGuids = GetRouteGUIDArray();
+	wxString result = "Name, From, To, No. of Waypoints";
+	for (const auto& routeGuid : routeGuids) {
+		auto routeDetails = GetRoute_Plugin(routeGuid);
+		result.append(wxString::Format("\n%s, %s, %s, %d", routeDetails->m_NameString, 
+			routeDetails->m_StartString, routeDetails->m_EndString, 
+			routeDetails->pWaypointList->size()));
+	}
+	wxMessageBox(result, "Routes");
 }
 
 // Receive SignalK update using observer/listener model
