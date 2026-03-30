@@ -956,6 +956,46 @@ void DemoPlugin::HandleSignalK(ObservedEvt ev) {
 
 === Chapter 11. Routes & Waypoints
 
+OpenCPN provides a rich set of API's for retrieving, creating, deleting and modifying
+routes, waypoints and tracks. Routes, waypoints and tracks are all identified using a
+Globally Unique Identifier (GUID) and this serves as the mechanism for all operations.
+
+==== Retrieving Waypoints
+
+For example to retrieve all of the waypoints the following API returns an array of GUID's 
+that can then be used to retrieve the details for each waypoint.
+
+[source,cpp]
+----
+wxArrayString waypointGuids = GetWaypointGUIDArray();
+wxString result = "Name, Latitude, Longitude";
+PlugIn_Waypoint waypointDetails;
+for (const auto& waypointGuid : waypointGuids) {
+	GetSingleWaypoint(waypointGuid, &waypointDetails);
+	result.append(wxString::Format("\n%s  %0.2f  %0.2f", waypointDetails.m_MarkName, 
+		waypointDetails.m_lat, waypointDetails.m_lon));
+}
+wxMessageBox(result, "Waypoints");
+----
+
+There are additional API's that return a waypoint GUID, for example the plugin message
+OCPN_WAYPOINT_ACTIVATED which is generated when a waypoint is activated, contains the GUID
+of the selected waypoint. Alternatively the GetActiveWaypointGUID() also returns a valid 
+GUID if a waypoint is active or an empty string if OpenCPN is not navigating to a waypoint. 
+
+image::demo_plugin-19.png
+
+Over time, to meet the needs for additional navigation or display requirments, additional fields
+were added to a waypoint. Support for these is implemented with additional structures and 
+corresponding API's.
+
+[source,cpp]
+----
+bool GetSingleWaypoint(wxString GUID, PlugIn_Waypoint *pwaypoint);
+bool GetSingleWaypointEx(wxString GUID, PlugIn_Waypoint_Ex *pwaypoint);
+bool GetSingleWaypointExV2(wxString GUID, PlugIn_Waypoint_ExV2 *pwaypoint);
+----
+
 === Chapter 12. Drawing on Canvas (non OpenGL)
 
 === Chapter 13. Drawing on Canvas (OpenGL)
