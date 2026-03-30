@@ -1,4 +1,4 @@
-= Audiopilot
+= Export GPX Plugin
 
 == Links
 
@@ -11,281 +11,58 @@ Forum:
 http://www.cruisersforum.com/forums/f134/demo_plugin.html[Cruiser's
 Forum Demo Plugin Thread]
 
-== 1. What and Why
+== Introduction
 
-Demo Plugin
+This plugin is derived from the Demo plugin, essentially branched from Chapter 5, demonstrating
+both Context Menus and Toolbar buttons.
 
-== 2. Install
+It performs a simple export of either a single waypoint or multiple waypoints using the 
+standard GPX XML format. It is a "plain vanilla" export, which excludes the extensions that 
+are used by OpenCPN, meaning that it should be able to be imported into any other commercial 
+Multi Function Display (MFD) or third party application.
 
-image::demo_plugin-01.png
-
-Download the plugin tarball from the repository. Install using the plugin manager. Tools→Plugins→Import plugin.
-
-image::demo_plugin-02.png
-
-The plugin manager displays a dialog indicating the plugin has been successfully installed.
-
-image::demo_plugin-03.png
-
-== 3. Enabling
-
-Enable the plugin using Tools→Plugins, finding the Demo Plugin entry and tick the checkbox.
-
-image::demo_plugin-04.png
-
-== 4. Using the OpenCPN Plugin API's
-
-=== Chapter 1. Basic plugin, Mandatory API's, Logging, Plugin Folders
-
-This is a basic plugin, that demonstrates the mandatory API's that a plugin MUST support.
-
-Note that the class that implements the plugin, derives from an OpenCPN plugin base class. Over successive versions of OpenCPN
-new functions and members have been added to the base classes. The plugin need only inherit from a base class that provides the
-API's required for the plugin's desired capabilites.
+In some respects it addresses the problem described in the following post:
+https://www.cruisersforum.com/forums/f134/opencpn-general-30946-140.html#post4063366
 
 [source,cpp]
 ----
-DemoPlugin::DemoPlugin(void* ppimgr) : opencpn_plugin_117(ppimgr) 
-----
-is derived from the OpenCPN Plugin API version 1.17 base class
-
-The mandatory API's that all plugins must implement
-
-These two API's indicate what version of the OpenCPN API's are supported
-[source,cpp]
-----
-GetAPIVersionMajor()
-----
-Eg. if the plugin is derived from OpenCPN Plugin API 1.17, the major version number is 1
-[source,cpp]
-----
-GetAPIVersionMinor()
-----
-Eg. if the plugin is derived from OpenCPN Plugin API 1.17, the minor version number is 17
-
-These three API's indicate the version number of the plugin
-[source,cpp]
-----
-GetPlugInVersionMajor()
-----
-Eg. If the plugin version is 1.2.3, the major version is 1
-[source,cpp]
-----
-GetPlugInVersionMinor() 
-----
-Eg. If the plugin version is 1.2.3, the major version is 2
-[source,cpp]
-----
-GetPlugInVersionPatch() 
-----
-Eg. If the plugin version is 1.2.3, the patch version is 3
-
-This returns the name of the plugin and is displayed in the Plugin Manager
-[source,cpp]
-----
-GetCommonName() 
+auto gpxMenu = new wxMenuItem(NULL, k_SecondContextMenu, "Export GPX", "Export Waypoint as GPX", wxITEM_NORMAL, NULL);
+	exportWaypointMenuId = AddCanvasContextMenuItemExt(gpxMenu, this, "Waypoint");
 ----
 
-The following two API's return a long and short description, both of which are displayed in the Plugin Manager
-[source,cpp]
-----
-GetShortDescription()
-
-GetLongDescription()
-----
-This API returns the icon for the plugin which is displayed in the Plugin Manager. It should be a 32 x 32 pixel bitmap.
-[source,cpp]
-----
-GetPlugInBitmap() 
-----
-
-image::demo_plugin-04.png
-
-In addition the plugin dumps some of the OpenCPN standard folder paths and user's measurement units into the OpenCPN log file
-using wxLogMessage. This OpenCPN log is the preferred mechanism for plugins to log messages. To log important error messages, 
-you can also us wxLogError.
-
-=== Chapter 2. Configuration (Default Settings)
-
-OpenCPN and plugins persist configuration settings using the wxWidgets file based configuration class. This allows settings
-to be persisted in a standard ini file format.
-
-Settings can saved using code similar to:
-[source,cpp]
-----
-wxFileConfig* configSettings = GetOCPNConfigObject();
-	if (configSettings) {
-		configSettings->SetPath("/PlugIns/DemoPlugin");
-		configSettings->Write("A_Boolean_Value", g_someBooleanValue);
-		configSettings->Write("An_Integer_Value", g_someIntegerValue);
-		configSettings->Write("A_String_Value", g_someStringValue);
-	}
-----
-
-Upon plugin installation and enabling, an OpenCPN Callback API SetDefaults can be implemented to allow the plugin to perform its initial
-configuration. In this example, a wxWizard dialog is displayed to allow the users to configure the plugin's settings. 
-However developers are free to implement any UI they wish, or in fact not display any UI, rather just adopt some default values.
+And for the toolbar button:
 
 [source,cpp]
 ----
-void DemoPlugin::SetDefaults(void) {
-	auto installationWizard = std::make_unique<DemoWizard>(GetOCPNCanvasWindow());
-	if (installationWizard->RunWizard(installationWizard->m_pages.at(0))) {
-		SaveSettings();
-	}
-}
+wxString normalIcon = pluginFolder + "demo_icon_normal.svg";
+wxString toggledIcon = pluginFolder + "demo_icon_toggled.svg";
+wxString rolloverIcon = pluginFolder + "demo_icon_rollover.svg";
+
+exportWaypointsToolbarId = InsertPlugInToolSVG("Demo", normalIcon,
+	rolloverIcon, toggledIcon, wxITEM_CHECK, "Export Waypoints", "Export all waypoints", NULL, -1, 0, this);
 ----
 
-image::demo_plugin-05.png 
+----
 
-=== Chapter 3. Settings/Preferences
-
-There are two mechanisms that may be used to display an interface to allow users to configure the plugin.
-The first mechanism adds a notebook page to any of the notebook tabs (Display, Charts, Ship, User) in the OpenCPN Toolbox.
-This requires the INSTALL_TOOLBOX_PAGE value to be returned in the Init function and the OnSetupOptions function to be overridden 
+It also cherry picks from from Chapter 11, Retrieving the properties of a waypoint.
 
 [source,cpp]
 ----
-void DemoPlugin::OnSetupOptions(void) {
-	auto toolBoxWindow = AddOptionsPage(OptionsParentPI::PI_OPTIONS_PARENT_UI, _("Demo Settings"));
-	auto toolboxSizer = new wxBoxSizer(wxVERTICAL);
-	toolBoxWindow->SetSizer(toolboxSizer);
-	auto demoToolbox =  new DemoToolbox(toolBoxWindow);
-	toolboxSizer->Add(demoToolbox, 1, wxALL | wxEXPAND);
-}
+PlugIn_Waypoint wpt;
+GetSingleWaypoint(waypointGUID, &wpt);
 ----
 
-image::demo_plugin-06.png 
-
-The second mechanism is for the plugin to provide its own dialog which is displayed from the plugin's preference option. This requires
-the WANTS_PREFERENCES value to be returned in the Init function and the ShowPreferencesDialog function to be overridden.
-
-image::demo_plugin-07.png
+It uses the bundled pugixml library to generate the XML document conforming the GPX schema.
 
 [source,cpp]
 ----
-void DemoPlugin::ShowPreferencesDialog(wxWindow* parent) {
-	auto demoSettings = std::make_unique<DemoSettings>(parent, wxID_ANY, _("Demo Preferences"));
-	if (wxID_OK == demoSettings->ShowModal()) {
-		SaveSettings();
-	}
-}
+pugi::xml_node node;
+pugi::xml_node value;
+node = gpx.append_child("wpt");
+node.append_attribute("lat") = wpt.m_lat;
+node.append_attribute("lon") = wpt.m_lon;
+value = node.append_child("name");
+value.append_child(pugi::node_pcdata).set_value(wpt.m_MarkName);
+value = node.append_child("desc");
+value.append_child(pugi::node_pcdata).set_value(wpt.m_MarkDescription);
 ----
-
-image::demo_plugin-08.png
-
-
-=== Chapter 4. Context Menus
-
-One method that a plugin may solicit input from a user is via context menu items. The plugin 
-may add its own context menu items to the root context menu which will be displayed when the 
-user right clicks on the OpenCPN Canvas.
-
-image::demo_plugin-09.png
-
-Context Menu items are added using code similar to:
-[source,cpp]
-----
-auto demoContextMenu = new wxMenuItem(NULL, wxID_HIGHEST + 1, "Demo", "Demo Plugin Menu", wxITEM_NORMAL, NULL);
-demoContextMenuId = AddCanvasContextMenuItem(demoContextMenu, this);
-----
-
-When the context menu item is selected, the plugin handles the callback, checking that 
-the context menu item id matches and performs whatever functions the plugin requires.
-In this example just a message box is displayed.
-[source,cpp]
-----
-void DemoPlugin::OnContextMenuItemCallback(int id) {
-	if (id == demoContextMenuId) {
-		wxMessageBox(wxString::Format("Demo Context Menu Selected, Menu Id: %d", id), "Demo Plugin");
-	}
-}
-----
-image::demo_plugin-11.png
-
-Context Menu Items may also be added to the Sub Menus for AIS, Routes, Waypoints and Tracks. 
-This is only supported when using OpenCPN API level 1.20 or higher. An example of adding a 
-context menu item to the AIS sub menu is shown below.
-[source,cpp]
-----
-auto dscMenu = new wxMenuItem(NULL, wxID_HIGHEST + 2, "AIS Demo", "Demo Plugin AIS Sub Menu", wxITEM_NORMAL, NULL);
-demoAISContextMenuId = AddCanvasContextMenuItemExt(dscMenu, this, "AIS");
-----
-
-image::demo_plugin-12.png
-
-Again plugins may perform any function that is required, in this case just displaying a
-message box with some details about the selected AIS target. Also note that some OpenCPN helper
-API's are used to format the latitude and longitude which are stored internally by OpenCPN
-as doubles, into human readable strings.
-[source,cpp]
-----
-void DemoPlugin::OnContextMenuItemCallbackExt(int id, std::string obj_ident, std::string obj_type, double lat, double lon) {
-	if (id == demoAISContextMenuId) {
-		wxMessageBox(wxString::Format("Object Id: %d\nObject Identifier (MMSI): %s\nObject Type: %s\nLatitude: %s\nLongitude: %s",
-			id, obj_ident.c_str(), obj_type.c_str(), toSDMM_PlugIn(1, lat, true), 
-			toSDMM_PlugIn(2, lon, true)), "AIS Target Information", 
-			wxOK | wxICON_INFORMATION);
-	}
-}
-----
-
-image::demo_plugin-13.png
-
-=== Chapter 5. Toolbar
-
-Plugins may install a toolbar button to allow different tasks to be performed. Firstly create your
-toolbar button icons as Scaled Vector Graphics (.SVG) files.  Create three icons to represent the
-normal (untoggled) state, toggled state and rollover state (although for some reason OpenCPN
-does not process a rollover event).
-
-The following code is used to create the toolbar button:
-[source,cpp]
-----
-demoToolbarId = InsertPlugInToolSVG("Demo", normalIcon,
-		rolloverIcon, toggledIcon, wxITEM_CHECK, "Demo", "Demo Plugin Toolbar Description", NULL, -1, 0, this);
-----
-
-Note to also add the value INSTALLS_TOOLBAR_BUTTON to the return value of the Init function
-The toolbar button will then be displayed.
-
-image::demo_plugin-14.png
-
-To handle the toolbar button press, code similar to the following is invoked by the callback.
-[source,cpp]
-----
-void DemoPlugin::OnToolbarToolCallback(int id) {
-	if (id == demoToolbarId) {
-		isToolbarActive = !isToolbarActive;
-		SetToolbarItemState(id, isToolbarActive);
-		wxMessageBox(wxString::Format("Demo Toolbar invoked, Id: %d", id), "Demo Plugin");
-		isToolbarActive = !isToolbarActive;
-		SetToolbarItemState(id, isToolbarActive);
-	}
-}
-----
-
-In this example the plugin only displays a message box. Note that the state of the button
-is toggled while the message box is displayed using the SetToolbarItemState function.
-
-image::demo_plugin-15.png
-
-=== Chapter 6. NMEA 0183
-
-=== Chapter 7. NMEA 2000
-
-=== Chapter 8. SignalK
-
-=== Chapter 9. OCPN Messaging
-
-=== Chapter 10. Routes & Waypoints
-
-=== Chapter 11. Drawing on Canvas (non OpenGL)
-
-=== Chapter 12. Drawing on Canvas (OpenGL)
-
-=== Chapter 13. wxWidgets Advanced User Interface
-Chapter 14. Chart
-
-
-== 5. FAQ

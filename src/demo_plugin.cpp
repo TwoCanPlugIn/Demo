@@ -17,18 +17,12 @@
 //
 
 //
-// Project: Demo Plugin
-// Description: Demonstrate the use of the OpenCPN plugin API's
+// Project: GPX Export
+// Description: Derived from Demo plugin, demonstrate export of waypoints formatted using GPX
 // Owner: twocanplugin@hotmail.com
-// Date: 10/01/2026
+// Date: 31/03/2026
 // Version History: 
 // 1.0 Initial Release
-// Chapter 1. A Basic plugin, that does little except to dump some common OpenCPN file paths
-// Chapter 2. Plugin initial configuration and settings
-// Chapter 3. Saving & Loading settings and modifying settings using the toolbox
-// Chapter 4. User interaction - Context Menus
-// Chapter 5. User interaction - Toolbar Buttons
-
 
 #include "demo_plugin.h"
 
@@ -71,33 +65,16 @@ DemoPlugin::~DemoPlugin(void) {
 // Perform plugin initialization here. At this point most of OpenCPN has been initialised and most of the plugin API's can be invoked
 int DemoPlugin::Init(void) {
 
-	// Dump some of OpenCPN's special folder paths
-	wxLogMessage("Demo Plugin, OpenCPN Program Path (opencpn executable): %s", GetOCPN_ExePath());
-	wxLogMessage("Demo Plugin, OpenCPN Plugin Path (built-in plugins): %s", *GetpPlugInLocation());
-	wxLogMessage("Demo Plugin, OpenCPN Private Data Path (logs, config): %s", *GetpPrivateApplicationDataLocation());
-	wxLogMessage("Demo Plugin, OpenCPN Shared Data Path: %s", *GetpSharedDataLocation());
-	wxLogMessage("Demo Plugin, Any Plugin's Writeable Documents Path: %s", GetWritableDocumentsDir());
-	wxLogMessage("Demo Plugin, This Plugin's Data Path: %s", GetPluginDataDir(PKG_NAME));
-	wxLogMessage("Demo Plugin, This Plugin's Library Path: %s", GetPlugInPath(this));
-
-	// Dump some of OpenCPN's user measurement preferences
-	wxLogMessage("Demo Plugin, Temperature Units: %s", getUsrTempUnit_Plugin());
-	wxLogMessage("Demo Plugin, Speed Units: %s", getUsrSpeedUnit_Plugin());
-
 	// Dump the location of the user's documents folder
 	wxLogMessage("Demo Plugin, User's Documents: %s", wxStandardPaths::Get().GetDocumentsDir());
 	
 	// Load the previously saved settings
 	LoadSettings();
 
-	// Example of adding an item to the root context menu
-	auto demoContextMenu = new wxMenuItem(NULL, k_FirstContextMenu, "Demo", "Demo Plugin Menu", wxITEM_NORMAL, NULL);
-	demoContextMenuId = AddCanvasContextMenuItem(demoContextMenu, this);
-
 	// Example of adding an item to a sub context menu
 	// Valid Sub Menu Names are "Route", "Waypoint", "Track", "AIS")
-	auto dscMenu = new wxMenuItem(NULL, k_SecondContextMenu, "AIS Demo", "Demo Plugin AIS Sub Menu", wxITEM_NORMAL, NULL);
-	demoAISContextMenuId = AddCanvasContextMenuItemExt(dscMenu, this, "AIS");
+	auto gpxMenu = new wxMenuItem(NULL, k_SecondContextMenu, "Export GPX", "Export Waypoint as GPX", wxITEM_NORMAL, NULL);
+	exportWaypointMenuId = AddCanvasContextMenuItemExt(gpxMenu, this, "Waypoint");
 
 	// Example of adding a Toolbar button
 	// Firstly obtain the toolbar button icons
@@ -110,8 +87,8 @@ int DemoPlugin::Init(void) {
 
 	// Finally add the toolbar button, note also requires INSTALLS_TOOLBAR_TOOL
 	// BUG BUG Note that OpenCPN does not implement the rollover state
-	demoToolbarId = InsertPlugInToolSVG("Demo", normalIcon,
-		rolloverIcon, toggledIcon, wxITEM_CHECK, "Demo", "Demo Plugin Toolbar Description", NULL, -1, 0, this);
+	exportWaypointsToolbarId = InsertPlugInToolSVG("Demo", normalIcon,
+		rolloverIcon, toggledIcon, wxITEM_CHECK, "Export Waypoints", "Export all waypoints", NULL, -1, 0, this);
 
 	// A flag used to indicate the toggled/untoggled state of the toolbar button
 	isToolbarActive = false;
@@ -220,40 +197,41 @@ void DemoPlugin::ShowPreferencesDialog(wxWindow* parent) {
 	}
 }
 
-// Invoked when the plugin's context menu items are selected
-void DemoPlugin::OnContextMenuItemCallback(int id) {
-
-	if (id == demoContextMenuId) {
-		// A plugin can optionally enable/disable their context menus with the following line
-		// SetCanvasContextMenuItemGrey(demoContextMenuId, false);
-		wxMessageBox(wxString::Format("Demo Context Menu Selected, Menu Id: %d", id), 
-			"Demo Plugin");
-	}
-}
-
-// Invoked when a plugin's context sub menu items are selected
-// Note requires an OpenCPN API level of 1.20 or higher
+// Export the selected waypoint
 void DemoPlugin::OnContextMenuItemCallbackExt(int id, std::string obj_ident, std::string obj_type, double lat, double lon) {
+	if (id == exportWaypointMenuId) {
 
-	if (id == demoAISContextMenuId) {
-		wxMessageBox(wxString::Format("Object Id: %d\nObject Identifier (MMSI): %s\nObject Type: %s\nLatitude: %s\nLongitude: %s",
-			id, obj_ident.c_str(), obj_type.c_str(),
-			toSDMM_PlugIn(1, lat, true), toSDMM_PlugIn(2, lon, true)), "AIS Target Information", wxOK | wxICON_INFORMATION);
+		wxFileDialog fileSaveDialog(GetOCPNCanvasWindow(), _("Export GPX"),
+			wxStandardPaths::Get().GetDocumentsDir(), "", "GPX files (*.gpx)|*.gpx",
+			wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+
+		if (fileSaveDialog.ShowModal() == wxID_OK) {
+			wxArrayString guids;
+			guids.Add(obj_ident);
+			FormatAsGPX(fileSaveDialog.GetPath(), guids);
+		}
 	}
 }
 
-// Invoked when the plugin's toolbar button is presssed
+// Export all waypoints using GPX format
 void DemoPlugin::OnToolbarToolCallback(int id) {
-	if (id == demoToolbarId) {
-		// Just display a message box. 
-		// Note toggling the state of the toolbar while the message box is displayed
+	if (id == exportWaypointsToolbarId) {
 		isToolbarActive = !isToolbarActive;
 		SetToolbarItemState(id, isToolbarActive);
-		wxMessageBox(wxString::Format("Demo Toolbar invoked, Id: %d", id), "Demo Plugin");
+		
+		wxFileDialog fileSaveDialog(GetOCPNCanvasWindow(), _("Export GPX"),
+			wxStandardPaths::Get().GetDocumentsDir(), "", "GPX files (*.gpx)|*.gpx",
+			wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+
+		if (fileSaveDialog.ShowModal() == wxID_OK) {
+			FormatAsGPX(fileSaveDialog.GetPath(), GetWaypointGUIDArray());
+		}
+		
 		isToolbarActive = !isToolbarActive;
 		SetToolbarItemState(id, isToolbarActive);
 	}
 }
+
 
 void DemoPlugin::LoadSettings() {
 	wxFileConfig* configSettings = GetOCPNConfigObject();
@@ -272,5 +250,41 @@ void DemoPlugin::SaveSettings() {
 		configSettings->Write("A_Boolean_Value", g_someBooleanValue);
 		configSettings->Write("An_Integer_Value", g_someIntegerValue);
 		configSettings->Write("A_String_Value", g_someStringValue);
+	}
+}
+
+// Export waypoint(s) formatted using GPX
+void DemoPlugin::FormatAsGPX(wxString fileName, wxArrayString guids) {
+	pugi::xml_document doc;
+	// XML Declaration
+	pugi::xml_node decl = doc.append_child(pugi::node_declaration);
+	decl.append_attribute("version") = "1.0";
+	decl.append_attribute("encoding") = "UTF-8";
+	// GPX metadata
+	pugi::xml_node gpx = doc.append_child("gpx");
+	gpx.append_attribute("version") = "1.1";
+	gpx.append_attribute("creator") = "Demo Plugin";
+	gpx.append_attribute("xmlns") = "http://www.topografix.com/GPX/1/1";
+
+	// waypoints
+	pugi::xml_node node;
+	pugi::xml_node value;
+	PlugIn_Waypoint wpt;
+	for (auto it : guids) {
+		GetSingleWaypoint(it, &wpt);
+		node = gpx.append_child("wpt");
+		node.append_attribute("lat") = wpt.m_lat;
+		node.append_attribute("lon") = wpt.m_lon;
+		value = node.append_child("name");
+		value.append_child(pugi::node_pcdata).set_value(wpt.m_MarkName);
+		value = node.append_child("desc");
+		value.append_child(pugi::node_pcdata).set_value(wpt.m_MarkDescription);
+	}
+
+	if (doc.save_file(fileName.ToAscii().data())) {
+		wxMessageBox("Saved GPX file " + fileName);
+	}
+	else {
+		wxMessageBox("Error saving GPX file " + fileName);
 	}
 }

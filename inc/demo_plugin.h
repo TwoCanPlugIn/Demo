@@ -31,12 +31,16 @@
 #include <wx/stdpaths.h>
 #include <wx/fileconf.h>
 
+// Bundled XML libraries
+#include <pugixml.hpp>
+
 // Defines version numbers, names etc. for this plugin
 // This is automagically constructed via config.h.in from CMakeLists.txt
 #include "config.h"
 
 // OpenCPN Plugin header
 #include "ocpn_plugin.h"
+
 
 class DemoPlugin : public opencpn_plugin_120 {
 public:
@@ -63,20 +67,19 @@ public:
 	void OnCloseToolboxPanel(int page_sel, int ok_apply_cancel) override;
 	void OnSetupOptions(void) override;
 	void ShowPreferencesDialog(wxWindow* parent) override;
-	void OnContextMenuItemCallback(int id) override;
 	void OnContextMenuItemCallbackExt(int id, std::string obj_ident, std::string obj_type, double lat, double lon) override;
 	void OnToolbarToolCallback(int id) override;
-
+	
 private:
 	void LoadSettings();
 	void SaveSettings();
-
+	void FormatAsGPX(wxString fileName, wxArrayString guids);
+	
 	// Context Menu Id's
-	int demoContextMenuId;
-	int demoAISContextMenuId;
+	int exportWaypointMenuId;
 	
 	// Toolbar button Id & state
-	int demoToolbarId;
+	int exportWaypointsToolbarId;
 	bool isToolbarActive;
 };
 
