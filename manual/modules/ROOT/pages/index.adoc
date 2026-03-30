@@ -996,6 +996,53 @@ bool GetSingleWaypointEx(wxString GUID, PlugIn_Waypoint_Ex *pwaypoint);
 bool GetSingleWaypointExV2(wxString GUID, PlugIn_Waypoint_ExV2 *pwaypoint);
 ----
 
+==== Retrieving Routes
+
+Similar to waypoints, the following API returns an array of route GUID's that can then be 
+used to retrieve the details of each route.
+
+[source,cpp]
+----
+wxArrayString routeGuids = GetRouteGUIDArray();
+wxString result = "Name, From, To, No. of Waypoints";
+for (const auto& routeGuid : routeGuids) {
+	auto routeDetails = GetRoute_Plugin(routeGuid);
+	result.append(wxString::Format("\n%s  %s  %s  %s  %d", routeDetails->m_NameString, 
+		routeDetails->m_StartString, routeDetails->m_EndString, 
+		routeDetails->pWaypointList->size()));
+}
+wxMessageBox(result, "Routes");
+----
+
+Also, a route's GUID can be returned through the plugin messaging OCPN_RTE_ACTIVATED or the API
+GetActiveRouteGUID.
+
+To retrieve the waypoints that constitute a route, plugins iterate the list of waypoints 
+included in the route's properties.
+
+[source,cpp]
+----
+auto routeDetails = GetRoute_Plugin(guid);
+auto waypointList = routeDetails->pWaypointList;
+wxString result;
+for (Plugin_WaypointList::iterator it = waypointList->begin(); it != waypointList->end(); ++it) {
+	auto waypoint = *it;
+	result.append(wxString::Format("\n%s %0.2f %0.2f", waypoint->m_MarkName,
+		waypoint->m_lat, waypoint->m_lon));
+}
+wxMessageBox(result, "Route " + routeDetails->m_NameString + " from " + routeDetails->m_StartString);
+----
+
+Again, similar to waypoints, additional API's and structures have been added to routes as 
+requirements have evolved over time.
+
+[source,cpp]
+----
+std::unique_ptr<PlugIn_Route> GetRoute_Plugin(const wxString &GUID);
+std::unique_ptr<PlugIn_Route_Ex> GetRouteEx_Plugin(const wxString &GUID);
+std::unique_ptr<PlugIn_Route_ExV2> GetRouteExV2_Plugin(const wxString &GUID);
+----
+
 === Chapter 12. Drawing on Canvas (non OpenGL)
 
 === Chapter 13. Drawing on Canvas (OpenGL)
