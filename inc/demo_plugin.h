@@ -87,6 +87,8 @@ private:
 	void LoadSettings();
 	void SaveSettings();
 
+	void GetAllWaypoints();
+
 	// Context Menu Id's
 	int demoContextMenuId;
 	int demoAISContextMenuId;

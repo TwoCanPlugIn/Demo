@@ -40,6 +40,7 @@
 //			  Plugin Messaging - (9d. Transmit messages  using Observer/Listener model)
 // Chapter 10. SignalK - (10a. Receive SignalK updates using Plugin Messaging)
 //			   SignalK - (10b. Receive SignalK updates using Observer/Listener model)
+// Chapter 11. Routes and Waypoints - (11a. Retrieve Waypoints)
 
 #include "demo_plugin.h"
 
@@ -339,7 +340,8 @@ void DemoPlugin::OnToolbarToolCallback(int id) {
 		// Note toggling the state of the toolbar while the message box is displayed
 		isToolbarActive = !isToolbarActive;
 		SetToolbarItemState(id, isToolbarActive);
-		wxMessageBox(wxString::Format("Demo Toolbar invoked, Id: %d", id), "Demo Plugin");
+		GetAllWaypoints();
+		//wxMessageBox(wxString::Format("Demo Toolbar invoked, Id: %d", id), "Demo Plugin");
 		isToolbarActive = !isToolbarActive;
 		SetToolbarItemState(id, isToolbarActive);
 	}
@@ -722,6 +724,19 @@ void DemoPlugin::HandleSKUpdate(wxJSONValue& update) {
 	}
 }
 
+// Retrieve all waypoints and display a few attributes in a simple message box
+void DemoPlugin::GetAllWaypoints() {
+	wxArrayString waypointGuids = GetWaypointGUIDArray();
+	wxString result = "Name, Latitude, Longitude";
+	PlugIn_Waypoint waypointDetails;
+	for (const auto& waypointGuid : waypointGuids) {
+		GetSingleWaypoint(waypointGuid, &waypointDetails);
+		result.append(wxString::Format("\n%s  %0.2f  %0.2f", waypointDetails.m_MarkName, 
+			waypointDetails.m_lat, waypointDetails.m_lon));
+	}
+	wxMessageBox(result, "Waypoints");
+}
+
 // Receive SignalK update using observer/listener model
 void DemoPlugin::HandleSignalK(ObservedEvt ev) {
 	// OpenCPN "packages" up the SignalK update, including the self context
@@ -753,6 +768,7 @@ void DemoPlugin::HandleSignalK(ObservedEvt ev) {
 		}
 	}
 }
+
 
 
 void DemoPlugin::LoadSettings() {
