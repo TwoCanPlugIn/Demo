@@ -1,4 +1,4 @@
-= Demoplugin
+= Export GPX Plugin
 
 == Links
 
@@ -8,7 +8,6 @@ Releases: https://github.com/audiopilot/demo_plugin/releases[Github Releases]
 
 
 Forum:
-
 https://www.cruisersforum.com/forums/f134/aspiring-plugin-developers-300137.html[Cruisers Forum Thread]
 
 == 1. Aim
@@ -29,7 +28,15 @@ Each of the following chapters are git commits/tags. Each chapter introduces a n
 of API's and should be independent of one another. That means you "should" be able to git cherry pick different 
 commits/tags to add specific features to the plugin.
 
-== 2. Install
+== 2. Introduction
+
+This plugin is derived from the Demo plugin, essentially branched from Chapter 5, demonstrating
+both Context Menus and Toolbar buttons.
+
+It performs a simple export of either a single waypoint or multiple waypoints using the 
+standard GPX XML format. It is a "plain vanilla" export, which excludes the extensions that 
+are used by OpenCPN, meaning that it should be able to be imported into any other commercial 
+Multi Function Display (MFD) or third party application.
 
 image::demo_plugin-01.png[]
 
@@ -53,6 +60,9 @@ This is a basic plugin, that demonstrates the mandatory API's that a plugin MUST
 Note that the class that implements the plugin, derives from an OpenCPN plugin base class. Over successive versions of OpenCPN
 new functions and members have been added to the base classes. The plugin need only inherit from a base class that provides the
 API's required for the plugin's desired capabilites.
+
+In some respects it addresses the problem described in the following post:
+https://www.cruisersforum.com/forums/f134/opencpn-general-30946-140.html#post4063366
 
 For example, a plugin that is derived from the OpenCPN Plugin API version 1.17 base class uses the following constructor.
 [source,cpp]
@@ -139,81 +149,27 @@ This returns the name of the plugin and is displayed in the Plugin Manager
 GetCommonName() 
 ----
 
-The following two API's return a long and short description, both of which are displayed in the Plugin Manager
-[source,cpp]
-----
-GetShortDescription()
-
-GetLongDescription()
-----
-This API returns the icon for the plugin which is displayed in the Plugin Manager. It should be a 32 x 32 pixel bitmap.
-[source,cpp]
-----
-GetPlugInBitmap() 
-----
-
-image::demo_plugin-04.png
-
-In addition the plugin dumps some of the OpenCPN standard folder paths and user's measurement units into the OpenCPN log file
-using wxLogMessage. This OpenCPN log is the preferred mechanism for plugins to log messages. To log important error messages, 
-you can also us wxLogError.
-
-=== Chapter 2. Configuration (Default Settings)
-
-OpenCPN and plugins persist configuration settings using the wxWidgets file based configuration class. This allows settings
-to be persisted in a standard ini file format.
-
-Settings can saved using code similar to:
-[source,cpp]
-----
-wxFileConfig* configSettings = GetOCPNConfigObject();
-	if (configSettings) {
-		configSettings->SetPath("/PlugIns/DemoPlugin");
-		configSettings->Write("A_Boolean_Value", g_someBooleanValue);
-		configSettings->Write("An_Integer_Value", g_someIntegerValue);
-		configSettings->Write("A_String_Value", g_someStringValue);
-	}
-----
-
-Upon plugin installation and enabling, an OpenCPN Callback API SetDefaults can be implemented to allow the plugin to perform its initial
-configuration. In this example, a wxWizard dialog is displayed to allow the users to configure the plugin's settings. 
-However developers are free to implement any UI they wish, or in fact not display any UI, rather just adopt some default values.
+And for the toolbar button:
 
 [source,cpp]
 ----
-void DemoPlugin::SetDefaults(void) {
-	auto installationWizard = std::make_unique<DemoWizard>(GetOCPNCanvasWindow());
-	if (installationWizard->RunWizard(installationWizard->m_pages.at(0))) {
-		SaveSettings();
-	}
-}
+wxString normalIcon = pluginFolder + "demo_icon_normal.svg";
+wxString toggledIcon = pluginFolder + "demo_icon_toggled.svg";
+wxString rolloverIcon = pluginFolder + "demo_icon_rollover.svg";
+
+exportWaypointsToolbarId = InsertPlugInToolSVG("Demo", normalIcon,
+	rolloverIcon, toggledIcon, wxITEM_CHECK, "Export Waypoints", "Export all waypoints", NULL, -1, 0, this);
 ----
 
-image::demo_plugin-05.png 
-
-=== Chapter 3. Settings/Preferences
-
-There are two mechanisms that may be used to display an interface to allow users to configure the plugin.
-The first mechanism adds a notebook page to any of the notebook tabs (Display, Charts, Ship, User) in the OpenCPN Toolbox.
-This requires the INSTALL_TOOLBOX_PAGE value to be returned in the Init function and the OnSetupOptions function to be overridden 
+It also cherry picks from from Chapter 11, Retrieving the properties of a waypoint.
 
 [source,cpp]
 ----
-void DemoPlugin::OnSetupOptions(void) {
-	auto toolBoxWindow = AddOptionsPage(OptionsParentPI::PI_OPTIONS_PARENT_UI, _("Demo Settings"));
-	auto toolboxSizer = new wxBoxSizer(wxVERTICAL);
-	toolBoxWindow->SetSizer(toolboxSizer);
-	auto demoToolbox =  new DemoToolbox(toolBoxWindow);
-	toolboxSizer->Add(demoToolbox, 1, wxALL | wxEXPAND);
-}
+PlugIn_Waypoint wpt;
+GetSingleWaypoint(waypointGUID, &wpt);
 ----
 
-image::demo_plugin-06.png 
-
-The second mechanism is for the plugin to provide its own dialog which is displayed from the plugin's preference option. This requires
-the WANTS_PREFERENCES value to be returned in the Init function and the ShowPreferencesDialog function to be overridden.
-
-image::demo_plugin-07.png
+It uses the bundled pugixml library to generate the XML document conforming the GPX schema.
 
 [source,cpp]
 ----
@@ -344,6 +300,5 @@ image::demo_plugin-15.png
 === Chapter 15. wxWidgets Advanced User Interface
 
 === Chapter 16. Chart
-
 
 == 5. FAQ

@@ -78,13 +78,8 @@ endmacro ()
 
 macro(add_plugin_libraries)
 
-    #add_subdirectory(opencpn-libs/nmea0183)
-    #target_link_libraries(${PACKAGE_NAME} ocpn::nmea0183)
+    add_subdirectory(opencpn-libs/pugixml)
+    target_link_libraries(${PACKAGE_NAME} ocpn::pugixml)
 
-    #add_subdirectory(opencpn-libs/n2kparser)
-    #target_link_libraries(${PACKAGE_NAME} ocpn::N2KParser)
-
-    #add_subdirectory(opencpn-libs/wxJSON)
-    #target_link_libraries(${PACKAGE_NAME} ocpn::wxjson)
 
 endmacro ()
