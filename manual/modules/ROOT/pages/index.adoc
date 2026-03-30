@@ -1043,6 +1043,47 @@ std::unique_ptr<PlugIn_Route_Ex> GetRouteEx_Plugin(const wxString &GUID);
 std::unique_ptr<PlugIn_Route_ExV2> GetRouteExV2_Plugin(const wxString &GUID);
 ----
 
+==== Creating a waypoint
+
+Plugins may create waypoints by adding values for the required fields and calling the
+appropriate API depending on the required fields.
+
+[source,cpp]
+----
+AddSingleWaypoint(PlugIn_Waypoint *pwaypoint, bool b_permanent = true);
+AddSingleWaypointEx(PlugIn_Waypoint_Ex *pwaypoint, bool b_permanent = true);
+bool AddSingleWaypointExV2(PlugIn_Waypoint_ExV2 *pwaypoint, bool b_permanent = true);
+----
+
+For example,
+
+[source,cpp]
+----
+PlugIn_Waypoint waypoint;
+waypoint.m_IsVisible = true;
+waypoint.m_MarkName = "Demo";
+waypoint.m_IconName = "Marks-Race-Start";
+waypoint.m_GUID = GetNewGUID();
+waypoint.m_lat = currentLatitude;
+waypoint.m_lon = currentLongitude;
+AddSingleWaypoint(&waypoint, true);
+----
+
+Note, the list of icons can be retrieved using the following API:
+
+[source,cpp]
+----
+wxArrayString iconNames = GetIconNameArray();
+for (auto it : iconNames) {
+// Do something with the icon names, perhaps populate a UI wxChoice widget
+}
+----
+
+The icons, which are Scalable Vector Graphics (SVG) images, can be found in the 
+uidata\markicons folder in the the opencpn program folder. 
+
+image::demo_plugin-20.png
+
 === Chapter 12. Drawing on Canvas (non OpenGL)
 
 === Chapter 13. Drawing on Canvas (OpenGL)
