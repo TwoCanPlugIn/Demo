@@ -90,6 +90,7 @@ private:
 	void GetAllWaypoints();
 	void GetAllRoutes();
 	void CreateWaypoint();
+	void ModifyWaypoint();
 
 	// Context Menu Id's
 	int demoContextMenuId;

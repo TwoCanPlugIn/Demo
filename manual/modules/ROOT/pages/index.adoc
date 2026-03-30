@@ -1046,7 +1046,7 @@ std::unique_ptr<PlugIn_Route_ExV2> GetRouteExV2_Plugin(const wxString &GUID);
 ==== Creating a waypoint
 
 Plugins may create waypoints by adding values for the required fields and calling the
-appropriate API depending on the required fields.
+appropriate API depending on the requirements.
 
 [source,cpp]
 ----
@@ -1081,6 +1081,35 @@ for (auto it : iconNames) {
 
 The icons, which are Scalable Vector Graphics (SVG) images, can be found in the 
 uidata\markicons folder in the the opencpn program folder. 
+
+image::demo_plugin-20.png
+
+==== Updating a Waypoint
+
+To update an existing waypoint, retrieve the waypoint, update the appropriate fields and 
+call the corresponding API.
+
+[source,cpp]
+----
+bool UpdateSingleWaypoint(PlugIn_Waypoint *pwaypoint);
+bool UpdateSingleWaypointEx(PlugIn_Waypoint_Ex *pwaypoint);
+bool UpdateSingleWaypointExV2(PlugIn_Waypoint_ExV2 *pwaypoint);
+----
+
+For example to add two range rings, at a distance of 1 Nm with a colour of purple, we can
+use the following example:
+
+[source,cpp]
+----
+PlugIn_Waypoint_ExV2 waypoint;
+GetSingleWaypointExV2(waypointGUID, &waypoint);
+waypoint.nrange_rings = 2;
+waypoint.RangeRingSpace = 1.0;
+waypoint.RangeRingColor = wxColour(128, 0, 128);
+if (UpdateSingleWaypointExV2(&waypoint)) {
+	return;
+}
+----
 
 image::demo_plugin-20.png
 
