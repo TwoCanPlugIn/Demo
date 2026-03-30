@@ -42,6 +42,7 @@
 //			   SignalK - (10b. Receive SignalK updates using Observer/Listener model)
 // Chapter 11. Routes and Waypoints - (11a. Retrieve Waypoints)
 //			   Routes and Waypoints - (11b. Retrieve Routes)
+//			   Routes and Waypoints - (11c. Adding a Waypoint)
 
 #include "demo_plugin.h"
 
@@ -341,7 +342,8 @@ void DemoPlugin::OnToolbarToolCallback(int id) {
 		// Note toggling the state of the toolbar while the message box is displayed
 		isToolbarActive = !isToolbarActive;
 		SetToolbarItemState(id, isToolbarActive);
-		GetAllRoutes();
+		CreateWaypoint();
+		//GetAllRoutes();
 		//GetAllWaypoints();
 		//wxMessageBox(wxString::Format("Demo Toolbar invoked, Id: %d", id), "Demo Plugin");
 		isToolbarActive = !isToolbarActive;
@@ -796,7 +798,17 @@ void DemoPlugin::HandleSignalK(ObservedEvt ev) {
 	}
 }
 
-
+// Drop a waypoint at the current position which has been persisted in the NavMsg listener 
+void DemoPlugin::CreateWaypoint() {
+	PlugIn_Waypoint waypoint;
+	waypoint.m_IsVisible = true;
+	waypoint.m_MarkName = "Demo";
+	waypoint.m_IconName = "Marks-Race-Start";
+	waypoint.m_GUID = GetNewGUID();
+	waypoint.m_lat = currentLatitude;
+	waypoint.m_lon = currentLongitude;
+	AddSingleWaypoint(&waypoint, true);
+}
 
 void DemoPlugin::LoadSettings() {
 	wxFileConfig* configSettings = GetOCPNConfigObject();
