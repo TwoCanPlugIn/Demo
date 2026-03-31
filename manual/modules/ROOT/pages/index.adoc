@@ -1150,6 +1150,41 @@ AddPlugInRoute(route.get(), true);
 
 image::demo_plugin-22.png
 
+==== Updating a Route
+
+Similar to updating a waypoint, to update a route, retrieve the selected route, update its 
+properties as required, including the waypoint list and save the changes.
+
+[source,cpp]
+----
+route = GetRoute_Plugin(someGuid);
+Plugin_WaypointList* pList = route->pWaypointList;
+// In this example we'll reverse the route
+std::vector<PlugIn_Waypoint> waypoints;
+for (auto it = pList->begin(); it != pList->end(); ++it) {
+	waypoints.push_back(**it);
+}
+// Reverse the Start and End names
+wxString endString = route->m_EndString;
+route->m_EndString = route->m_StartString;
+route->m_StartString = endString;
+// Clear the waypoint list and reverse the order of waypoints
+route->pWaypointList->Clear();
+for (auto it = waypoints.rbegin(); it != waypoints.rend(); ++it) {
+	route->pWaypointList->Append(new PlugIn_Waypoint(*it));
+}
+UpdatePlugInRoute(route.get());
+----
+
+Again, depending on visibility or navigational requirements, use the appropriate classes and 
+corresponding API's
+
+[source,cpp]
+----
+bool UpdatePlugInRoute(PlugIn_Route *proute)
+bool UpdatePlugInRouteEx(PlugIn_Route_Ex *proute)
+bool UpdatePlugInRouteExV2(PlugIn_Route_ExV2 *proute)
+----
 
 === Chapter 12. Drawing on Canvas (non OpenGL)
 
