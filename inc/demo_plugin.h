@@ -92,6 +92,7 @@ private:
 	void CreateWaypoint();
 	void ModifyWaypoint();
 	void CreateRoute();
+	void ReverseRoute();
 
 	// Context Menu Id's
 	int demoContextMenuId;

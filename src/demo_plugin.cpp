@@ -45,6 +45,7 @@
 //			   Routes and Waypoints - (11c. Adding a Waypoint)
 //			   Routes and Waypoints - (11d. Modifying a Waypoint)
 //			   Routes and Waypoints - (11e. Adding a Route)
+//			   Routes and Waypoints - (11f. Modifying a Route)
 
 #include "demo_plugin.h"
 
@@ -344,7 +345,8 @@ void DemoPlugin::OnToolbarToolCallback(int id) {
 		// Note toggling the state of the toolbar while the message box is displayed
 		isToolbarActive = !isToolbarActive;
 		SetToolbarItemState(id, isToolbarActive);
-		CreateRoute();
+		ReverseRoute();
+		//CreateRoute();
 		//ModifyWaypoint();
 		//CreateWaypoint();
 		//GetAllRoutes();
@@ -863,6 +865,40 @@ void DemoPlugin::CreateRoute() {
 	}
 	else {
 		wxMessageBox("Failed to create route", "Demo Plugin");
+	}
+}
+
+// Reverse the route
+void DemoPlugin::ReverseRoute() {
+	wxArrayString routeGuids = GetRouteGUIDArray();
+	std::unique_ptr<PlugIn_Route> route;
+	for (auto routeGuid : routeGuids) {
+		route = GetRoute_Plugin(routeGuid);
+		if (route->m_NameString.CmpNoCase("Demo Route") == 0) {
+			Plugin_WaypointList* pList;
+			pList = route->pWaypointList;
+			std::vector<PlugIn_Waypoint> waypoints;
+			for (auto it = pList->begin(); it != pList->end(); ++it) {
+				// Copy the waypoints from the route
+				waypoints.push_back(**it);
+			}
+			// Now reverse everything
+			wxString endString = route->m_EndString;
+			route->m_EndString = route->m_StartString;
+			route->m_StartString = endString;
+			// Clear the waypoint list and reverse the order of waypoints
+			route->pWaypointList->Clear();
+			for (auto it = waypoints.rbegin(); it != waypoints.rend(); ++it) {
+				route->pWaypointList->Append(new PlugIn_Waypoint(*it));
+			}
+			if (UpdatePlugInRoute(route.get())) {
+				wxMessageBox("Route " + route->m_NameString + " reversed", "Demo Plugin");
+			}
+			else {
+				wxMessageBox("Failed to reverse route " + route->m_NameString, "Demo Plugin");
+			}
+			return;
+		}
 	}
 }
 
