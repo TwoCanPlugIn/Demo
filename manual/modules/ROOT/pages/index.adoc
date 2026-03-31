@@ -1111,7 +1111,45 @@ if (UpdateSingleWaypointExV2(&waypoint)) {
 }
 ----
 
-image::demo_plugin-20.png
+image::demo_plugin-21.png
+
+==== Adding Routes.
+
+Adding a route involves three steps, initializing the route itself, adding waypoints in the 
+correct order and finally adding the route. Depending on the visibility and navigational 
+requirements, different structures with additional fields and corresponsing API's are used.
+
+[source,cpp]
+----
+std::unique_ptr route = std::make_unique<PlugIn_Route>();
+route->m_NameString = "Demo Route";
+route->m_StartString = "Here";
+route->m_EndString = "There";
+route->m_GUID = GetNewGUID();
+----
+
+The second step is adding the waypoints.
+
+[source,cpp]
+----
+PlugIn_Waypoint* waypoint =  new PlugIn_Waypoint();
+waypoint->m_MarkName = "First Waypoint";
+waypoint->m_IconName = "Symbol-Triangle";
+waypoint->m_GUID = GetNewGUID();
+waypoint->m_lat = -38.4;
+waypoint->m_lon = 144.6;
+route->pWaypointList->Append(waypoint);
+----
+
+Finally the route is added.
+
+[source,cpp]
+----
+AddPlugInRoute(route.get(), true);
+----
+
+image::demo_plugin-22.png
+
 
 === Chapter 12. Drawing on Canvas (non OpenGL)
 

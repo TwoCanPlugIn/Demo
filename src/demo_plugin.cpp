@@ -44,6 +44,7 @@
 //			   Routes and Waypoints - (11b. Retrieve Routes)
 //			   Routes and Waypoints - (11c. Adding a Waypoint)
 //			   Routes and Waypoints - (11d. Modifying a Waypoint)
+//			   Routes and Waypoints - (11e. Adding a Route)
 
 #include "demo_plugin.h"
 
@@ -343,7 +344,8 @@ void DemoPlugin::OnToolbarToolCallback(int id) {
 		// Note toggling the state of the toolbar while the message box is displayed
 		isToolbarActive = !isToolbarActive;
 		SetToolbarItemState(id, isToolbarActive);
-		ModifyWaypoint();
+		CreateRoute();
+		//ModifyWaypoint();
 		//CreateWaypoint();
 		//GetAllRoutes();
 		//GetAllWaypoints();
@@ -833,6 +835,35 @@ void DemoPlugin::ModifyWaypoint() {
 		}
 	}
 	wxMessageBox("Demo waypoint was not found", "Demo Plugin");
+}
+
+// Add a route
+void DemoPlugin::CreateRoute() {
+	std::unique_ptr route = std::make_unique<PlugIn_Route>();
+	route->m_NameString = "Demo Route";
+	route->m_StartString = "Here";
+	route->m_EndString = "There";
+	route->m_GUID = GetNewGUID();
+	
+	// Add ten waypoints
+	// Note that these are not "stand alone" waypoints, they only exist in the context of 
+	// the route and do not appear in the Route & Mark Manager under the waypoints tab.
+	for (size_t i = 0; i < 10; i++) {
+		PlugIn_Waypoint* waypoint =  new PlugIn_Waypoint();
+		waypoint->m_MarkName = wxString::Format("WP%03d", i);
+		waypoint->m_IconName = "Symbol-Triangle";
+		waypoint->m_GUID = GetNewGUID();
+		waypoint->m_lat = -38.0 + (i * 0.5);
+		waypoint->m_lon = 144.0 + (i * 0.5);
+		route->pWaypointList->Append(waypoint);
+	}
+		
+	if (AddPlugInRoute(route.get(), true)) {
+		wxMessageBox("Created Route " + route->m_NameString, "Demo Plugin");
+	}
+	else {
+		wxMessageBox("Failed to create route", "Demo Plugin");
+	}
 }
 
 void DemoPlugin::LoadSettings() {
