@@ -42,8 +42,6 @@ exportWaypointsToolbarId = InsertPlugInToolSVG("Demo", normalIcon,
 	rolloverIcon, toggledIcon, wxITEM_CHECK, "Export Waypoints", "Export all waypoints", NULL, -1, 0, this);
 ----
 
-----
-
 It also cherry picks from from Chapter 11, Retrieving the properties of a waypoint.
 
 [source,cpp]
@@ -65,4 +63,6 @@ value = node.append_child("name");
 value.append_child(pugi::node_pcdata).set_value(wpt.m_MarkName);
 value = node.append_child("desc");
 value.append_child(pugi::node_pcdata).set_value(wpt.m_MarkDescription);
+----
+
 ----
