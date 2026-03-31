@@ -1150,6 +1150,80 @@ AddPlugInRoute(route.get(), true);
 
 image::demo_plugin-22.png
 
+==== Updating a Route
+
+Similar to updating a waypoint, to update a route, retrieve the selected route, update its 
+properties as required, including the waypoint list and save the changes.
+
+[source,cpp]
+----
+route = GetRoute_Plugin(someGuid);
+Plugin_WaypointList* pList = route->pWaypointList;
+// In this example we'll reverse the route
+std::vector<PlugIn_Waypoint> waypoints;
+for (auto it = pList->begin(); it != pList->end(); ++it) {
+	waypoints.push_back(**it);
+}
+// Reverse the Start and End names
+wxString endString = route->m_EndString;
+route->m_EndString = route->m_StartString;
+route->m_StartString = endString;
+// Clear the waypoint list and reverse the order of waypoints
+route->pWaypointList->Clear();
+for (auto it = waypoints.rbegin(); it != waypoints.rend(); ++it) {
+	route->pWaypointList->Append(new PlugIn_Waypoint(*it));
+}
+UpdatePlugInRoute(route.get());
+----
+
+Again, depending on visibility or navigational requirements, use the appropriate classes and 
+corresponding API's
+
+[source,cpp]
+----
+bool UpdatePlugInRoute(PlugIn_Route *proute)
+bool UpdatePlugInRouteEx(PlugIn_Route_Ex *proute)
+bool UpdatePlugInRouteExV2(PlugIn_Route_ExV2 *proute)
+----
+
+==== Important Note regarding waypoints and routes
+Be aware that there are two types of waypoints. (Please don't ask what the OpenCPN developers were thinking!)
+
+Standalone (or Free Standing) waypoints. These are created when waypoints are dropped onto the 
+chart, created from the Route and Mark Manager, imported from a GPX file as waypoints <wpt> </wpt> 
+or programmatically as described above, using AddSingleWaypoint etc. These waypoints appear in 
+the Route and Mark Manager under the Marks tab. These waypoints can also be used in routes.
+
+The other type of waypoints are only part of a route and are created when routes are drawn onto 
+the chart, imported from a GPX file as route points <rtept> </rtept> or programmatically as 
+described above using AddPlugInRoute.
+
+When creating a route and wishing to use standalone waypoints there are two options. If the 
+waypoint already exists, obtain a pointer to the existing waypoint and add it to the route 
+list.
+
+[source,cpp]
+----
+PlugIn_Waypoint* waypoint;
+GetSingleWaypoint(someGuid, waypoint);
+route->pWaypointList->Append(waypoint);
+----
+
+If the waypoint does not exist, simply create it on the fly and add it to the route list.
+
+[source,cpp]
+----
+PlugIn_Waypoint* waypoint =  new PlugIn_Waypoint();
+waypoint->m_MarkName = "First Waypoint";
+waypoint->m_IconName = "Symbol-Triangle";
+waypoint->m_GUID = GetNewGUID();
+waypoint->m_lat = -38.4;
+waypoint->m_lon = 144.6;
+AddSingleRoute(waypoint);
+route->pWaypointList->Append(waypoint);
+----
+
+There is no mechanism in the UI to convert waypoints from one form to another.
 
 === Chapter 12. Drawing on Canvas (non OpenGL)
 
