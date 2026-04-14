@@ -30,6 +30,7 @@
 #include <wx/filename.h>
 #include <wx/stdpaths.h>
 #include <wx/fileconf.h>
+#include <wx/graphics.h>
 
 // Defines version numbers, names etc. for this plugin
 // This is automagically constructed via config.h.in from CMakeLists.txt

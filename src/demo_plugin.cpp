@@ -47,6 +47,7 @@
 //			   Routes and Waypoints - (11e. Adding a Route)
 //			   Routes and Waypoints - (11f. Modifying a Route)
 // Chapter 12. Drawing on the Canvas Non OpenGL - (12a. Using a Device Context)
+//			   Drawing on the Canvas Non OpenGL - (12b. Using a Graphics Context)
 
 #include "demo_plugin.h"
 
@@ -924,8 +925,8 @@ bool DemoPlugin::RenderOverlayMultiCanvas(wxDC& dc, PlugIn_ViewPort* vp,
 		return false;
 	}
 
-	// Only display on the first canvas
-	if (canvasIndex != 0) {
+	// Only draw on a valid canvas
+	if ((canvasIndex != 0) && (canvasIndex != 1)) {
 		return false;
 	}
 
@@ -941,45 +942,104 @@ bool DemoPlugin::RenderOverlayMultiCanvas(wxDC& dc, PlugIn_ViewPort* vp,
 	// The actual length of the wind arrow (in pixels)
 	const int radius = std::abs(boat.y - ring.y);
 
-	// Draw a solid ring and wind angle on the first canvas (rather ugly...)
-	dc.SetPen(*wxRED_PEN);
-	dc.SetBrush(*wxRED_BRUSH);
-	dc.DrawCircle(boat.x, boat.y, radius);
+	if (canvasIndex == 0) {
 
-	// Only draw the wind arrow, if we actually have a valid wind angle and heading
-	if (std::isnan(trueHeading) || std::isnan(apparentWindAngle)) {
-		return true;
+		// Draw a solid ring and wind angle on the first canvas (rather ugly...)
+		dc.SetPen(*wxRED_PEN);
+		dc.SetBrush(*wxRED_BRUSH);
+		dc.DrawCircle(boat.x, boat.y, radius);
+
+		// Only draw the wind arrow, if we actually have a valid wind angle and heading
+		if (!std::isnan(trueHeading) && !std::isnan(apparentWindAngle)) {
+
+			// Note, the below computations should be implemented as reusable functions 
+			// Normalize the wind angle
+			double angle = std::fmod(apparentWindAngle + trueHeading, 360.0);
+			if (angle < 0) {
+				angle += 360.0;
+			}
+
+			// Convert to radians and
+			// adjust to the screen cordinates (0 degrees is normally displayed at 3 o'clock)
+			angle -= 90.0;
+			angle = angle * M_PI / 180.0;
+
+			// Generate the points for the wind arrow
+			wxPoint arrow[] = {
+				{int(std::cos(angle) * 10 + boat.x), int(std::sin(angle) * 10 + boat.y)},
+				{int(std::cos(angle + 0.088) * radius + boat.x), int(std::sin(angle + 0.088) * radius + boat.y)},
+				{int(std::cos(angle - 0.088) * radius + boat.x), int(std::sin(angle - 0.088) * radius + boat.y)},
+				{int(std::cos(angle) * 10 + boat.x), int(std::sin(angle) * 10 + boat.y)}
+			};
+
+			// Finally draw the wind arrow
+			dc.SetPen(*wxBLUE_PEN);
+			dc.SetBrush(*wxBLUE_BRUSH);
+			dc.DrawPolygon(std::size(arrow), arrow);
+		}
+
 	}
-	
-	// Normalize the wind angle
-	double angle = std::fmod(apparentWindAngle + trueHeading, 360.0);
-	if (angle < 0) {
-		angle += 360.0;
+
+	else if (canvasIndex == 1) {
+
+		// On this canvas we'll draw using a Graphics Context
+		wxMemoryDC* memDC = wxDynamicCast(&dc, wxMemoryDC);
+		if (!memDC)
+			return false;
+
+		std::unique_ptr<wxGraphicsContext> gc(wxGraphicsContext::Create(*memDC));
+		if (!gc)
+			return false;
+
+		// Draw a circle centred on the boat
+		gc->SetPen(*wxBLACK_PEN);
+		// Use a light grey brush with an alpha channel (opacity/transparency)
+		gc->SetBrush(wxColour(100, 100, 100, 50));
+		auto path = gc->CreatePath();
+		path.AddCircle(boat.x, boat.y, radius);
+		gc->FillPath(path);
+
+		// Only draw the wind arrow, if we actually have a valid wind angle and heading
+		if (std::isnan(trueHeading) || std::isnan(apparentWindAngle)) {
+			return true;
+		}
+
+		// Normalize the wind angle
+		double angle = std::fmod(apparentWindAngle + trueHeading, 360.0);
+		if (angle < 0) {
+			angle += 360.0;
+		}
+
+		// Convert to radians and
+		// adjust to the screen cordinates (0 degrees is normally displayed at 3 o'clock)
+		angle -= 90.0;
+		angle = angle * M_PI / 180.0;
+
+		// Note, these trigonemtric functions could be replaced with wxGC translate and rotate
+		wxPoint2DDouble arrow[] = {
+			{std::cos(angle) * 10 + boat.x, std::sin(angle) * 10 + boat.y},
+			{std::cos(angle + 0.088) * radius + boat.x, std::sin(angle + 0.088) * radius + boat.y},
+			{std::cos(angle - 0.088) * radius + boat.x, std::sin(angle - 0.088) * radius + boat.y}
+		};
+
+		// Demonstrate the use of gradients
+		wxGraphicsGradientStops stops;
+		stops.SetStartColour(wxColour(255, 153, 51));
+		stops.SetEndColour(wxColour(255, 229, 204));
+
+		gc->SetBrush(gc->CreateLinearGradientBrush(
+			arrow[0].m_x, arrow[0].m_y,
+			arrow[2].m_x, arrow[2].m_y,
+			stops));
+
+		// Finally draw the wind arrow
+		gc->SetPen(wxPen(wxColour(255, 153, 51), 1));
+		gc->DrawLines(std::size(arrow), arrow);
+
+		gc->Flush();
 	}
-
-	// Convert to radians and
-	// adjust to the screen cordinates (0 degrees is normally displayed at 3 o'clock)
-	angle -= 90.0;
-	angle = angle * M_PI / 180.0;
-
-	// Generate the points for the wind arrow
-	wxPoint arrow[] = {
-		{int(std::cos(angle) * 10 + boat.x), int(std::sin(angle) * 10 + boat.y)},
-		{int(std::cos(angle + 0.088) * radius + boat.x), int(std::sin(angle + 0.088) * radius + boat.y)},
-		{int(std::cos(angle - 0.088) * radius + boat.x), int(std::sin(angle - 0.088) * radius + boat.y)},
-		{int(std::cos(angle) * 10 + boat.x), int(std::sin(angle) * 10 + boat.y)}
-	};
-
-	// Finally draw the wind arrow
-	dc.SetPen(*wxBLUE_PEN);
-	dc.SetBrush(*wxBLUE_BRUSH);
-	dc.DrawPolygon(std::size(arrow), arrow);
-
 	return true;
-
 }
-
-
 
 void DemoPlugin::LoadSettings() {
 	wxFileConfig* configSettings = GetOCPNConfigObject();
