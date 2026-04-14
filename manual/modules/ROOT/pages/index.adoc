@@ -1232,6 +1232,9 @@ drawn on the chart. As OpenCPN has evolved over time, supporting single and dual
 and graphics acceleration using OpenGL so too have the plugin API's. For simplicity sake this 
 demo will concentrate on the multi canvas rendering API's for both OpenGL and non OpenGL. 
 
+Note that WANTS_OVERLAY_CALLBACK must be returned in the Init function for OpenCPN to register 
+the plugin's callback routine.
+
 To draw on the canvas when OpenCPN has been launched without OpenGL support, the plugin may
 use the following Callback API:
 [source,cpp]
@@ -1293,12 +1296,54 @@ dc.DrawCircle(boat.x, boat.y, radius);
 
 image::demo_plugin-23.png
 
-Note that WANTS_OVERLAY_CALLBACK must be returned in the Init function for OpenCPN to register 
-the plugin's callback routine.
+Instead of using the wxWidgets Device Context (wxDC) to render on the canvas, plugins may opt 
+to use a Graphics Context (wxGC) as it provides a richer set of graphics functions. For example 
+anti-aliased drawing, transparency (alpha blending), rotation and more complex transformations.
+
+[source,cpp]
+----
+wxMemoryDC* memDC = wxDynamicCast(&dc, wxMemoryDC);
+std::unique_ptr<wxGraphicsContext> gc(wxGraphicsContext::Create(*memDC));
+auto path = gc->CreatePath();
+----
+
+For example, plugins can create transparent brushes so that other chart objects can be "seen 
+through" objects drawn by the plugin. Below, the fourth parameter of SetBrush is the alpha 
+channel and defines the level of transparency.
+
+[source,cpp]
+---
+gc->SetBrush(wxColour(100, 100, 100, 50));
+path.AddCircle(boat.x, boat.y, radius);
+gc->FillPath(path);
+---
+
+There are also opportunities to simplify the code by using the translation, rotation and 
+transform functions available with the wxWidgets Graphics Context. For example in this 
+demo plugin, instead of calculating the positions of the wind arrow using trigonometric 
+functions, it can be simplified to the following which has the benefit of reducing the risk 
+of programming errors and reducing the burden of code maintainance.
+
+[source,cpp]
+----
+// Define our arrow's dimensions, tip, bottom right, bottom left
+wxPoint2DDouble arrow[] = {
+	{0.0, 0.0},
+	{static_cast<double>(radius), 10.0},
+	{static_cast<double>(radius), -10.0}
+	};
+
+gc->PushState();
+gc->Translate(boat.x, boat.y);
+gc->Rotate(angle);
+gc->SetPen(wxPen(wxColour(255, 153, 51), 1));
+gc->DrawLines(std::size(arrow), arrow);
+gc->PopState();
+----
+
+image::demo_plugin-24.png
 
 === Chapter 13. Drawing on Canvas (OpenGL)
-
-
 
 === Chapter 14. wxWidgets Advanced User Interface
 
