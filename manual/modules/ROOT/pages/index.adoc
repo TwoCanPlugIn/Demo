@@ -1227,7 +1227,78 @@ There is no mechanism in the UI to convert waypoints from one form to another.
 
 === Chapter 12. Drawing on Canvas (non OpenGL)
 
+OpenCPN allows plugins to draw on the canvas to supplement information that is ordinariliy
+drawn on the chart. As OpenCPN has evolved over time, supporting single and dual canvas layouts 
+and graphics acceleration using OpenGL so too have the plugin API's. For simplicity sake this 
+demo will concentrate on the multi canvas rendering API's for both OpenGL and non OpenGL. 
+
+To draw on the canvas when OpenCPN has been launched without OpenGL support, the plugin may
+use the following Callback API:
+[source,cpp]
+----
+RenderOverlayMultiCanvas(wxDC& dc, PlugIn_ViewPort* vp,	int canvasIndex, int priority);
+----
+
+The rendering  API's that were available for earlier versions of OpenCPN will draw on both
+canvases if OpenCPN is configured in multi-canvas mode, whereas the newer API's allow plugins
+to select which canvas upon which to render.
+
+[source,cpp]
+----
+// Only display on the first canvas
+if (canvasIndex != 0) {
+	... draw stuff
+	...
+}
+----
+
+Plugins can select which layer on which to render, meaning that they can draw below all OpenCPN 
+drawn object (OVERLAY_LEGACY), above ships (OVERLAY_OVER_SHIPS) or for important information, 
+over all UI elements (OVERLAY_OVER_UI)
+
+[source,cpp]
+----
+if (priority == OVERLAY_LEGACY) {
+	... draw information of low importance
+	...
+}
+if (priority == OVERLAY_OVER_UI) {
+	... draw highly important information
+	...
+}
+----
+
+The OpenCPN view port (VP) provides the plugin with the chart extents, 
+scale factors etc. to allow the plugin to accurately position any drawing on screen.
+
+The helper function GetCanvasPixLL allows the plugin to convert geographic co-ordimates 
+(latitude & longitude) to screen pixels.
+
+[source,cpp]
+----
+// Convert the current position to pixel co-ordinates
+wxPoint boat, ring;
+GetCanvasPixLL(vp, &boat, currentLatitude, currentLongitude);
+----
+
+Using the wxWidgets Device Context (DC) provides a plugin with ability to use any of the 
+wxWidgets drawing API's. 
+
+[source,cpp]
+----
+dc.SetPen(*wxRED_PEN);
+dc.SetBrush(*wxRED_BRUSH);
+dc.DrawCircle(boat.x, boat.y, radius);
+----
+
+image::demo_plugin-23.png
+
+Note that WANTS_OVERLAY_CALLBACK must be returned in the Init function for OpenCPN to register 
+the plugin's callback routine.
+
 === Chapter 13. Drawing on Canvas (OpenGL)
+
+
 
 === Chapter 14. wxWidgets Advanced User Interface
 

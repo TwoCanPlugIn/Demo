@@ -46,6 +46,7 @@
 //			   Routes and Waypoints - (11d. Modifying a Waypoint)
 //			   Routes and Waypoints - (11e. Adding a Route)
 //			   Routes and Waypoints - (11f. Modifying a Route)
+// Chapter 12. Drawing on the Canvas Non OpenGL - (12a. Using a Device Context)
 
 #include "demo_plugin.h"
 
@@ -143,7 +144,8 @@ int DemoPlugin::Init(void) {
 
 	// Notify OpenCPN what callbacks the plugin registers to receive
 	return (WANTS_CONFIG | INSTALLS_TOOLBOX_PAGE | WANTS_PREFERENCES | INSTALLS_TOOLBAR_TOOL
-		| WANTS_NMEA_EVENTS | WANTS_NMEA_SENTENCES | WANTS_LATE_INIT | WANTS_PLUGIN_MESSAGING);
+		| WANTS_NMEA_EVENTS | WANTS_NMEA_SENTENCES | WANTS_LATE_INIT | WANTS_PLUGIN_MESSAGING
+		| WANTS_OVERLAY_CALLBACK);
 }
 
 // OpenCPN is either closing down, or the plugin has been disabled from the Preferences Dialog
@@ -364,6 +366,8 @@ void DemoPlugin::SetPositionFixEx(PlugIn_Position_Fix_Ex& pfix) {
 	currentLatitude = pfix.Lat;
 	currentLongitude = pfix.Lon;
 	trueHeading = pfix.Hdt;
+	magneticHeading = pfix.Hdm;
+
 }
 
 // The "new" method for receiving Navigation Data from OpenCPN. The handler must be 
@@ -456,8 +460,8 @@ void DemoPlugin::ParseWind(NMEA0183* nmeaSentence) {
 
 			// For the time being, we'll just log the data
 			// In later Chapters we'll use this data to draw on the canvas
-			wxLogMessage("Demo Plugin, Wind Direction: %0.2f, Wind Speed (knots) %0.2f",
-				apparentWindAngle, apparentWindSpeed);
+			//wxLogMessage("Demo Plugin, Wind Direction: %0.2f, Wind Speed (knots) %0.2f",
+			//	apparentWindAngle, apparentWindSpeed);
 		}
 	}
 }
@@ -901,6 +905,81 @@ void DemoPlugin::ReverseRoute() {
 		}
 	}
 }
+
+// Drawing on the Canvas when OpenGL is not being used
+// This simple example just draws a wind arrow centered on the boat
+// Note requires WANTS_OVERLAY_CALLBACK and that OpenCPN is NOT using 
+// OpenGL (hardware graphics acceleration)
+bool DemoPlugin::RenderOverlayMultiCanvas(wxDC& dc, PlugIn_ViewPort* vp,
+	int canvasIndex, int priority) {
+
+	// Only draw in Legacy Mode, other modes are OVERLAY_OVER_SHIPS, OVERLAY_OVER_UI etc.
+	if (priority != OVERLAY_LEGACY) {
+		wxLogDebug("Demo Plugin, Render error, OpenCPN not in legacy mode, %d", priority);
+		return false;
+	}
+
+	if (!dc.IsOk()) {
+		wxLogDebug("Demo Plugin, Render error, Canvas DC not OK");
+		return false;
+	}
+
+	// Only display on the first canvas
+	if (canvasIndex != 0) {
+		return false;
+	}
+
+	// Convert our boat position to screen coordinates
+	wxPoint boat, ring;
+	GetCanvasPixLL(vp, &boat, currentLatitude, currentLongitude);
+
+	// The length of our arrow will be one Nm (which equals 1' of latitude)
+	// Could retrieve the headingPredictor length and draw our lines to the same size
+	constexpr double LAT_MINUTE = 0.0166;
+	GetCanvasPixLL(vp, &ring, currentLatitude + LAT_MINUTE, currentLongitude);
+
+	// The actual length of the wind arrow (in pixels)
+	const int radius = std::abs(boat.y - ring.y);
+
+	// Draw a solid ring and wind angle on the first canvas (rather ugly...)
+	dc.SetPen(*wxRED_PEN);
+	dc.SetBrush(*wxRED_BRUSH);
+	dc.DrawCircle(boat.x, boat.y, radius);
+
+	// Only draw the wind arrow, if we actually have a valid wind angle and heading
+	if (std::isnan(trueHeading) || std::isnan(apparentWindAngle)) {
+		return true;
+	}
+	
+	// Normalize the wind angle
+	double angle = std::fmod(apparentWindAngle + trueHeading, 360.0);
+	if (angle < 0) {
+		angle += 360.0;
+	}
+
+	// Convert to radians and
+	// adjust to the screen cordinates (0 degrees is normally displayed at 3 o'clock)
+	angle -= 90.0;
+	angle = angle * M_PI / 180.0;
+
+	// Generate the points for the wind arrow
+	wxPoint arrow[] = {
+		{int(std::cos(angle) * 10 + boat.x), int(std::sin(angle) * 10 + boat.y)},
+		{int(std::cos(angle + 0.088) * radius + boat.x), int(std::sin(angle + 0.088) * radius + boat.y)},
+		{int(std::cos(angle - 0.088) * radius + boat.x), int(std::sin(angle - 0.088) * radius + boat.y)},
+		{int(std::cos(angle) * 10 + boat.x), int(std::sin(angle) * 10 + boat.y)}
+	};
+
+	// Finally draw the wind arrow
+	dc.SetPen(*wxBLUE_PEN);
+	dc.SetBrush(*wxBLUE_BRUSH);
+	dc.DrawPolygon(std::size(arrow), arrow);
+
+	return true;
+
+}
+
+
 
 void DemoPlugin::LoadSettings() {
 	wxFileConfig* configSettings = GetOCPNConfigObject();

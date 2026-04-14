@@ -82,6 +82,7 @@ public:
 	void SetNMEASentence(wxString& sentence) override;
 	void LateInit(void) override;
 	void SetPluginMessage(wxString& message_id, wxString& message_body) override;
+	bool RenderOverlayMultiCanvas(wxDC& dc, PlugIn_ViewPort* vp, int canvasIndex, int priority) override;
 
 private:
 	void LoadSettings();
@@ -106,6 +107,7 @@ private:
 	double currentLatitude;
 	double currentLongitude;
 	double trueHeading;
+	double magneticHeading;
 
 	// Wind angle and speed
 	double apparentWindAngle;
