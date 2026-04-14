@@ -680,24 +680,26 @@ plugins to communicate with one another. Messages are identified with a message 
 is usually formatted using Java Script Object Notation (JSON).
 
 Some of the well known OpenCPN Messages include:
-
-GLOBAL_SETTINGS_UPDATED
-OpenCPN Config
-OCPN_CORE_SIGNALK
-OCPN_OPENGL_CONFIG
-WMM_VARIATION_BOAT
-WMM_VARIATION_BOAT_REQUEST
-WMM_WINDOW_SHOWN
-WMM_WINDOW_HIDDEN
-AIS
-OCPN_WPT_ACTIVATED
-OCPN_WPT_DEACTIVATED
-OCPN_WPT_ARRIVED
-OCPN_RTE_ACTIVATED
-OCPN_RTE_DEACTIVATED
-OCPN_RTE_ENDED
-OCPN_RTE_REQUEST
-GRIB_VALUES
+[cols="1"]
+|===
+|GLOBAL_SETTINGS_UPDATED
+|OpenCPN Config
+|OCPN_CORE_SIGNALK
+|OCPN_OPENGL_CONFIG
+|WMM_VARIATION_BOAT
+|WMM_VARIATION_BOAT_REQUEST
+|WMM_WINDOW_SHOWN
+|WMM_WINDOW_HIDDEN
+|AIS
+|OCPN_WPT_ACTIVATED
+|OCPN_WPT_DEACTIVATED
+|OCPN_WPT_ARRIVED
+|OCPN_RTE_ACTIVATED
+|OCPN_RTE_DEACTIVATED
+|OCPN_RTE_ENDED
+|OCPN_RTE_REQUEST
+|GRIB_VALUES
+|===
 
 Similar to NMEA 0183, there are two ways to receive and to generate an OpenCPN message; the old 
 mechanism using a Callback API SetPluginMessage to receive messages and the API SendPluginMessage 
@@ -748,7 +750,7 @@ the SendPluginMessage API is invoked.
 SendPluginMessage("Demo_Plugin", data);
 ----
 
-image::demo_plugin-18.png
+image::demo_plugin-18.png[]
 
 ==== Using the "new" Observer/Listener model to receive Plugin messages.
 
@@ -1005,7 +1007,7 @@ OCPN_WAYPOINT_ACTIVATED which is generated when a waypoint is activated, contain
 of the selected waypoint. Alternatively the GetActiveWaypointGUID() also returns a valid 
 GUID if a waypoint is active or an empty string if OpenCPN is not navigating to a waypoint. 
 
-image::demo_plugin-19.png
+image::demo_plugin-19.png[]
 
 Over time, to meet the needs for additional navigation or display requirments, additional fields
 were added to a waypoint. Support for these is implemented with additional structures and 
@@ -1104,7 +1106,7 @@ for (auto it : iconNames) {
 The icons, which are Scalable Vector Graphics (SVG) images, can be found in the 
 uidata\markicons folder in the the opencpn program folder. 
 
-image::demo_plugin-20.png
+image::demo_plugin-20.png[]
 
 ==== Updating a Waypoint
 
@@ -1133,7 +1135,7 @@ if (UpdateSingleWaypointExV2(&waypoint)) {
 }
 ----
 
-image::demo_plugin-21.png
+image::demo_plugin-21.png[]
 
 ==== Adding Routes.
 
@@ -1170,7 +1172,7 @@ Finally the route is added.
 AddPlugInRoute(route.get(), true);
 ----
 
-image::demo_plugin-22.png
+image::demo_plugin-22.png[]
 
 ==== Updating a Route
 
@@ -1248,6 +1250,75 @@ route->pWaypointList->Append(waypoint);
 There is no mechanism in the UI to convert waypoints from one form to another.
 
 === Chapter 12. Drawing on Canvas (non OpenGL)
+
+OpenCPN allows plugins to draw on the canvas to supplement information that is ordinariliy
+drawn on the chart. As OpenCPN has evolved over time, supporting single and dual canvas layouts 
+and graphics acceleration using OpenGL so too have the plugin API's. For simplicity sake this 
+demo will concentrate on the multi canvas rendering API's for both OpenGL and non OpenGL. 
+
+To draw on the canvas when OpenCPN has been launched without OpenGL support, the plugin may
+use the following Callback API:
+[source,cpp]
+----
+RenderOverlayMultiCanvas(wxDC& dc, PlugIn_ViewPort* vp,	int canvasIndex, int priority);
+----
+
+The rendering  API's that were available for earlier versions of OpenCPN will draw on both
+canvases if OpenCPN is configured in multi-canvas mode, whereas the newer API's allow plugins
+to select which canvas upon which to render.
+
+[source,cpp]
+----
+// Only display on the first canvas
+if (canvasIndex != 0) {
+	... draw stuff
+	...
+}
+----
+
+Plugins can select which layer on which to render, meaning that they can draw below all OpenCPN 
+drawn object (OVERLAY_LEGACY), above ships (OVERLAY_OVER_SHIPS) or for important information, 
+over all UI elements (OVERLAY_OVER_UI)
+
+[source,cpp]
+----
+if (priority == OVERLAY_LEGACY) {
+	... draw information of low importance
+	...
+}
+if (priority == OVERLAY_OVER_UI) {
+	... draw highly important information
+	...
+}
+----
+
+The OpenCPN view port (VP) provides the plugin with the chart extents, 
+scale factors etc. to allow the plugin to accurately position any drawing on screen.
+
+The helper function GetCanvasPixLL allows the plugin to convert geographic co-ordimates 
+(latitude & longitude) to screen pixels.
+
+[source,cpp]
+----
+// Convert the current position to pixel co-ordinates
+wxPoint boat, ring;
+GetCanvasPixLL(vp, &boat, currentLatitude, currentLongitude);
+----
+
+Using the wxWidgets Device Context (DC) provides a plugin with ability to use any of the 
+wxWidgets drawing API's. 
+
+[source,cpp]
+----
+dc.SetPen(*wxRED_PEN);
+dc.SetBrush(*wxRED_BRUSH);
+dc.DrawCircle(boat.x, boat.y, radius);
+----
+
+image::demo_plugin-23.png[]
+
+Note that WANTS_OVERLAY_CALLBACK must be returned in the Init function for OpenCPN to register 
+the plugin's callback routine.
 
 === Chapter 13. Drawing on Canvas (OpenGL)
 
