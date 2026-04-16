@@ -48,6 +48,7 @@
 //			   Routes and Waypoints - (11f. Modifying a Route)
 // Chapter 12. Drawing on the Canvas Non OpenGL - (12a. Using a Device Context)
 //			   Drawing on the Canvas Non OpenGL - (12b. Using a Graphics Context)
+//			   Drawing on the Canvas Non OpenGL - (12c. Using Graphics Context transform/translate functions etc.)
 
 #include "demo_plugin.h"
 
@@ -276,6 +277,8 @@ wxString DemoPlugin::GetLongDescription() {
 wxBitmap* DemoPlugin::GetPlugInBitmap() {
 	return &g_pluginBitmap;
 }
+
+// End of mandatory "housekeeping" methods
 
 // When the plugin is enabled, this API provides the opportunity to configure initial settings
 void DemoPlugin::SetDefaults(void) {
@@ -1015,27 +1018,28 @@ bool DemoPlugin::RenderOverlayMultiCanvas(wxDC& dc, PlugIn_ViewPort* vp,
 		angle -= 90.0;
 		angle = angle * M_PI / 180.0;
 
-		// Note, these trigonemtric functions could be replaced with wxGC translate and rotate
+		// Demonstrate use of wxGraphicsContext transform, translate, rotate functions
+
+		// Define our arrow's dimensions, tip, bottom right, bottom left
 		wxPoint2DDouble arrow[] = {
-			{std::cos(angle) * 10 + boat.x, std::sin(angle) * 10 + boat.y},
-			{std::cos(angle + 0.088) * radius + boat.x, std::sin(angle + 0.088) * radius + boat.y},
-			{std::cos(angle - 0.088) * radius + boat.x, std::sin(angle - 0.088) * radius + boat.y}
+			{0.0, 0.0},
+			{static_cast<double>(radius), 10.0},
+			{static_cast<double>(radius), -10.0}
 		};
 
-		// Demonstrate the use of gradients
+		gc->PushState();
+		gc->Translate(boat.x, boat.y);
+		gc->Rotate(angle);
+		gc->SetPen(wxPen(wxColour(0, 100, 0), 1));
 		wxGraphicsGradientStops stops;
-		stops.SetStartColour(wxColour(255, 153, 51));
-		stops.SetEndColour(wxColour(255, 229, 204));
-
+		stops.SetStartColour(wxColour(144, 238, 144));
+		stops.SetEndColour(wxColour(0, 100, 0));
 		gc->SetBrush(gc->CreateLinearGradientBrush(
 			arrow[0].m_x, arrow[0].m_y,
 			arrow[2].m_x, arrow[2].m_y,
 			stops));
-
-		// Finally draw the wind arrow
-		gc->SetPen(wxPen(wxColour(255, 153, 51), 1));
 		gc->DrawLines(std::size(arrow), arrow);
-
+		gc->PopState();
 		gc->Flush();
 	}
 	return true;
