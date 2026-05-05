@@ -49,6 +49,7 @@
 // Chapter 12. Drawing on the Canvas Non OpenGL - (12a. Using a Device Context)
 //			   Drawing on the Canvas Non OpenGL - (12b. Using a Graphics Context)
 //			   Drawing on the Canvas Non OpenGL - (12c. Using Graphics Context transform/translate functions etc.)
+// Chapter 13. Drawing on the Canvas using OpenGL
 
 #include "demo_plugin.h"
 
@@ -147,7 +148,7 @@ int DemoPlugin::Init(void) {
 	// Notify OpenCPN what callbacks the plugin registers to receive
 	return (WANTS_CONFIG | INSTALLS_TOOLBOX_PAGE | WANTS_PREFERENCES | INSTALLS_TOOLBAR_TOOL
 		| WANTS_NMEA_EVENTS | WANTS_NMEA_SENTENCES | WANTS_LATE_INIT | WANTS_PLUGIN_MESSAGING
-		| WANTS_OVERLAY_CALLBACK);
+		| WANTS_OVERLAY_CALLBACK | WANTS_OPENGL_OVERLAY_CALLBACK );
 }
 
 // OpenCPN is either closing down, or the plugin has been disabled from the Preferences Dialog
@@ -351,13 +352,13 @@ void DemoPlugin::OnToolbarToolCallback(int id) {
 		// Note toggling the state of the toolbar while the message box is displayed
 		isToolbarActive = !isToolbarActive;
 		SetToolbarItemState(id, isToolbarActive);
-		ReverseRoute();
+		//ReverseRoute();
 		//CreateRoute();
 		//ModifyWaypoint();
 		//CreateWaypoint();
 		//GetAllRoutes();
 		//GetAllWaypoints();
-		//wxMessageBox(wxString::Format("Demo Toolbar invoked, Id: %d", id), "Demo Plugin");
+		wxMessageBox(wxString::Format("Demo Toolbar invoked, Id: %d", id), "Demo Plugin");
 		isToolbarActive = !isToolbarActive;
 		SetToolbarItemState(id, isToolbarActive);
 	}
@@ -939,8 +940,7 @@ bool DemoPlugin::RenderOverlayMultiCanvas(wxDC& dc, PlugIn_ViewPort* vp,
 
 	// The length of our arrow will be one Nm (which equals 1' of latitude)
 	// Could retrieve the headingPredictor length and draw our lines to the same size
-	constexpr double LAT_MINUTE = 0.0166;
-	GetCanvasPixLL(vp, &ring, currentLatitude + LAT_MINUTE, currentLongitude);
+	GetCanvasPixLL(vp, &ring, currentLatitude + k_LatitudeMinute, currentLongitude);
 
 	// The actual length of the wind arrow (in pixels)
 	const int radius = std::abs(boat.y - ring.y);
@@ -980,19 +980,20 @@ bool DemoPlugin::RenderOverlayMultiCanvas(wxDC& dc, PlugIn_ViewPort* vp,
 			dc.SetBrush(*wxBLUE_BRUSH);
 			dc.DrawPolygon(std::size(arrow), arrow);
 		}
-
 	}
 
 	else if (canvasIndex == 1) {
 
 		// On this canvas we'll draw using a Graphics Context
 		wxMemoryDC* memDC = wxDynamicCast(&dc, wxMemoryDC);
-		if (!memDC)
+		if (!memDC) {
 			return false;
+		}
 
 		std::unique_ptr<wxGraphicsContext> gc(wxGraphicsContext::Create(*memDC));
-		if (!gc)
+		if (!gc) {
 			return false;
+		}
 
 		// Draw a circle centred on the boat
 		gc->SetPen(*wxBLACK_PEN);
@@ -1042,6 +1043,129 @@ bool DemoPlugin::RenderOverlayMultiCanvas(wxDC& dc, PlugIn_ViewPort* vp,
 		gc->PopState();
 		gc->Flush();
 	}
+	return true;
+}
+
+// Drawing on the canvas using OpenGL (hardware accelerated graphics)
+// Note requires WANTS_OPENGL_OVERLAY_CALLBACK
+bool DemoPlugin::RenderGLOverlayMultiCanvas(wxGLContext* pcontext, PlugIn_ViewPort* vp,
+	int canvasIndex, int priority) {
+
+	// Draw "over" the chart, other modes are OVERLAY_LEGACY, OVERLAY_OVER_SHIPS, OVERLAY_OVER_UI etc.
+	if (priority != OVERLAY_OVER_EMBOSS) {
+		wxLogDebug("Demo Plugin, OpenGL Render error, OpenCPN not in emboss mode, %d", priority);
+		return false;
+	}
+
+	if (!pcontext->IsOK()) {
+		wxLogDebug("Demo Plugin, OpenGL Render error, Canvas DC not OK");
+		return false;
+	}
+
+	if (canvasIndex != 0) {
+		wxLogDebug("Demo Plugin, OpenGL Render error, Wrong canvas: %d", canvasIndex);
+		return false;
+	}
+
+	// The pluginDC helper class that abstracts wxGLCanvas methods It is 
+	// "universal" in that it support both OpenGL (wxGLCanvas) and non OpenGL (wxDC)
+	std::unique_ptr<piDC> demoGraphicsContext = std::make_unique<piDC>(pcontext);
+	
+	// Draw an annular ring centred around the boat with apparent wind direction indication
+	demoGraphicsContext->SetBrush(wxColour(100, 100, 100, 50));
+	demoGraphicsContext->SetPen(*wxBLACK_PEN);
+
+	// Convert our current position to screen co-ordinates
+	wxPoint boatLocation, ringLocation;
+	GetCanvasPixLL(vp, &boatLocation, currentLatitude, currentLongitude);
+
+	// Draw a transparent circle around the boat
+	double oneMinuteAway = currentLatitude + (k_LatitudeMinute);
+	GetCanvasPixLL(vp, &ringLocation, oneMinuteAway, currentLongitude);
+
+	const int radius = std::abs(boatLocation.y - ringLocation.y);
+	demoGraphicsContext->StrokeCircle(boatLocation.x, boatLocation.y, radius);
+
+	// Draw apparent wind angle centred around the boat
+	if (std::isnan(apparentWindAngle) || std::isnan(magneticHeading)) {
+		return true;
+	}
+
+	double drawnAngle = apparentWindAngle + magneticHeading;
+
+	// Normalize Wind Angle, remebering 3'oclock on the screen is 0 degrees
+	drawnAngle = std::fmod(drawnAngle + 360.0, 360.0);
+	drawnAngle -= 90.0;
+
+	constexpr double arrowHeadOffset = 0.088;
+	constexpr double arrowInnerLength = 10.0;
+
+	const double radians = drawnAngle * M_PI / 180.0;
+
+	// Trigonometry calculations for drawing the wind arrow
+	const double cosA = std::cos(radians);
+	const double sinA = std::sin(radians);
+	const double cosPlus = std::cos(radians + arrowHeadOffset);
+	const double sinPlus = std::sin(radians + arrowHeadOffset);
+	const double cosMinus = std::cos(radians - arrowHeadOffset);
+	const double sinMinus = std::sin(radians - arrowHeadOffset);
+
+	wxPoint windArrow[4] = {
+		{
+			static_cast<int>(cosA * arrowInnerLength + boatLocation.x),
+			static_cast<int>(sinA * arrowInnerLength + boatLocation.y)
+		},
+		{
+			static_cast<int>(cosPlus * radius + boatLocation.x),
+			static_cast<int>(sinPlus * radius + boatLocation.y)
+		},
+		{
+			static_cast<int>(cosMinus * radius + boatLocation.x),
+			static_cast<int>(sinMinus * radius + boatLocation.y)
+		},
+		{
+			static_cast<int>(cosA * arrowInnerLength + boatLocation.x),
+			static_cast<int>(sinA * arrowInnerLength + boatLocation.y)
+		}
+	};
+
+	// Lambda helper function for setting pen and brush colours
+	auto SetColor = [&](const wxColor& c) {
+		demoGraphicsContext->SetPen(wxPen(c, 1, wxPENSTYLE_SOLID));
+		demoGraphicsContext->SetBrush(c);
+		};
+
+	// Use different colours to indicate wind speed ranges
+	if (apparentWindSpeed < 10) {
+		SetColor(wxColor(255, 255, 155));
+	}
+	else if (apparentWindSpeed < 15) {
+		SetColor(wxColor(0, 255, 0));
+	}
+	else if (apparentWindSpeed < 20) {
+		SetColor(wxColor(0, 255, 255));
+	}
+	else if (apparentWindSpeed < 25) {
+		SetColor(wxColor(0, 0, 255));
+	}
+	else {
+		SetColor(wxColor(255, 155, 128));
+	}
+
+	// Draw the wind arrow
+	demoGraphicsContext->DrawPolygonTessellated(WXSIZEOF(windArrow), windArrow);
+	// Draw the wind speed label
+	wxFont textFont = wxFont(wxFontInfo(16).Family(wxFONTFAMILY_SWISS));
+	demoGraphicsContext->SetFont(textFont);
+	wxCoord textWidth, textHeight;
+	wxString label = wxString::Format("%.1f", apparentWindSpeed);
+
+	demoGraphicsContext->GetTextExtent(label, &textWidth, &textHeight);
+	
+	// Note, could position the label better
+	demoGraphicsContext->DrawText(label, static_cast<int>(cosA* arrowInnerLength + boatLocation.x) - (textWidth / 2),
+		static_cast<int>(sinA* arrowInnerLength + boatLocation.y));
+	
 	return true;
 }
 

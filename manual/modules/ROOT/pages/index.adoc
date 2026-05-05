@@ -1275,7 +1275,8 @@ The OpenCPN view port (VP) provides the plugin with the chart extents,
 scale factors etc. to allow the plugin to accurately position any drawing on screen.
 
 The helper function GetCanvasPixLL allows the plugin to convert geographic co-ordimates 
-(latitude & longitude) to screen pixels.
+(latitude & longitude) to screen pixels. The reverse, converting pixels to geographic co-ordinates 
+is performed with the GetCanvasLLPix function.
 
 [source,cpp]
 ----
@@ -1344,6 +1345,98 @@ gc->PopState();
 image::demo_plugin-24.png
 
 === Chapter 13. Drawing on Canvas (OpenGL)
+
+Most modern computers incorporate Graphics Processors (GPU) to improve the  
+performance of graphics intensive applications. GPU's offload graphics operations 
+onto specialised hardware reducing the load on the CPU. Modern 
+operating systems provide their own API's to support graphics hardware 
+acceleration such as DirectX on Windows, Metal on OSX and Vulkan on Linux. 
+
+There are also cross platform graphics API's such as OpenGL which is supported on 
+most major platforms. In the case of OpenCPN, OpenGL support is provided by wxWidgets.
+
+Note, while Vulkan is an Open Source, Cross Platform Graphics library and the above is 
+a bit of a generalization, at the moment OpenCPN relies on OpenGL to improve its 
+graphics performance.
+
+To support OpenGL, plugins must specify the compiler flag -DocpnUSE_GL. This may be 
+added in Plugin.cmake if using the ShipDriver template or in PluginConfigure.cmake if 
+using the TestPlugin template.
+
+In addition the bundled library plugindc should be included as it provides classes 
+and functions that simplify drawing on the canvas using either OpenGL (wxGLCanvas) 
+or non-OpenGL (wxDC).
+
+[source,cpp]
+----
+add_subdirectory(opencpn-libs/plugin_dc)
+target_link_libraries(${PACKAGE_NAME} ocpn::plugin-dc)
+----
+
+Essentially it provides a level of abstraction so the plugin developers can use 
+API's with the same signature as the wxWidgets Device Context API's for both 
+wxGLCanvas or wxDC. For example it simplifies rendering with OpenGL by allowing
+the plugin developer to use:
+
+[source,cpp]
+----
+DrawRectangle(x, y, width, height);
+----
+
+insead of the low level complex wxGLCanvas API's
+
+[source,cpp]
+----
+glBegin(GL_QUADS);
+glVertex2i(x, y);
+glVertex2i(x + width, y);
+glVertex2i(x + width, y + height);
+glVertex2i(x, y + height);
+glEnd();
+----
+
+The plugin must specify the flag WANTS_OPENGL_OVERLAY_CALLBACK in the Init function 
+to register the plugin's callback function.
+
+Similar to drawing on the Canvas when not using OpenGL, plugins need to determine 
+the canvas layer upon which they weish to draw and if in multi-canvas mode, which
+canvas to draw upon.
+
+[source,cpp]
+----
+RenderGLOverlayMultiCanvas(wxGLContext* pcontext, PlugIn_ViewPort* vp,
+	int canvasIndex, int priority) {
+
+	// Determine which layer to draw upon
+	if (priority != OVERLAY_OVER_EMBOSS) {
+		return false;
+	}
+	// Do we have a valid device context
+	if (!pcontext->IsOK()) {
+		return false;
+	}
+	// Only draw on the first canvas
+	if (canvasIndex != 0) {
+		return false;
+	}
+----
+
+Plugins can then draw on the canvas using the plugindc class and its methods as needed. 
+[source,cpp]
+----
+// Create an instance of plugindc
+std::unique_ptr<piDC> pluginDC = std::make_unique<piDC>(pcontext);
+	
+// Draw a label at x=100, y =100
+wxFont textFont = wxFont(wxFontInfo(16).Family(wxFONTFAMILY_SWISS));
+pluginDC->SetFont(textFont);
+
+wxCoord textWidth, textHeight;
+wxString label = "My label here";
+
+pluginDC->GetTextExtent(label, &textWidth, &textHeight);
+pluginDC->DrawText(label, 100 - (textWidth / 2), 100);
+----
 
 === Chapter 14. wxWidgets Advanced User Interface
 
