@@ -43,9 +43,11 @@ set(PKG_AUTHOR "twocanplugin")
 set(PKG_IS_OPEN_SOURCE "yes")
 set(PKG_HOMEPAGE https://github.com/twocanplugin/demoplugin)
 set(PKG_INFO_URL https://twocanplugin.github.io/Demo/demo_plugin/index.html)
+set(PKG_API_LIB api-20)   # Specify the plugin API level
+
+add_definitions(-DocpnUSE_GL) # Specifiy the use of OpenGL
 
 include_directories(${CMAKE_SOURCE_DIR}/inc)
-
 
 set(SRC
     ${CMAKE_SOURCE_DIR}/src/demo_plugin.cpp
@@ -66,8 +68,6 @@ set (INC
 
 set (SOURCE_FILES ${SRC} ${INC})
 
-set(PKG_API_LIB api-20)  
-
 macro(late_init)
   # Perform initialization after the PACKAGE_NAME library, compilers
   # and ocpn::api is available.
@@ -86,5 +86,9 @@ macro(add_plugin_libraries)
 
     add_subdirectory(opencpn-libs/wxJSON)
     target_link_libraries(${PACKAGE_NAME} ocpn::wxjson)
+
+    add_subdirectory(opencpn-libs/plugin_dc)
+    target_link_libraries(${PACKAGE_NAME} ocpn::plugin-dc)
+
 
 endmacro ()

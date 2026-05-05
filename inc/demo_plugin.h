@@ -31,6 +31,7 @@
 #include <wx/stdpaths.h>
 #include <wx/fileconf.h>
 #include <wx/graphics.h>
+#include <wx/glcanvas.h>
 
 // Defines version numbers, names etc. for this plugin
 // This is automagically constructed via config.h.in from CMakeLists.txt
@@ -50,6 +51,9 @@
 #include "wx/jsonreader.h"
 #include "wx/jsonval.h"
 #include "wx/jsonwriter.h"
+
+// Bundled OpenCPN Device Context layer that supports both OpenGL and non OpenGL
+#include "pidc.h"
 
 class DemoPlugin : public opencpn_plugin_120, public wxEvtHandler {
 public:
@@ -84,6 +88,8 @@ public:
 	void LateInit(void) override;
 	void SetPluginMessage(wxString& message_id, wxString& message_body) override;
 	bool RenderOverlayMultiCanvas(wxDC& dc, PlugIn_ViewPort* vp, int canvasIndex, int priority) override;
+	bool RenderGLOverlayMultiCanvas(wxGLContext* pcontext, PlugIn_ViewPort* vp,
+		int canvasIndex, int priority) override;
 
 private:
 	void LoadSettings();
@@ -109,6 +115,9 @@ private:
 	double currentLongitude;
 	double trueHeading;
 	double magneticHeading;
+
+	// Chart Viewport (scale, chart extents etc.)
+	PlugIn_ViewPort viewPort;
 
 	// Wind angle and speed
 	double apparentWindAngle;

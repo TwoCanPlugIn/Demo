@@ -37,4 +37,7 @@ extern wxString g_someStringValue;
 constexpr int k_FirstContextMenu = wxID_HIGHEST + 1;
 constexpr int k_SecondContextMenu = wxID_HIGHEST + 2;
 
+// One minute of Latitude equals 1 Nautical Mile (Nm)
+constexpr double k_LatitudeMinute = 0.0166;
+
 #endif
