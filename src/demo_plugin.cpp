@@ -50,6 +50,7 @@
 //			   Drawing on the Canvas Non OpenGL - (12b. Using a Graphics Context)
 //			   Drawing on the Canvas Non OpenGL - (12c. Using Graphics Context transform/translate functions etc.)
 // Chapter 13. Drawing on the Canvas using OpenGL
+// Chapter 14. Interacting with the canvas
 
 #include "demo_plugin.h"
 
@@ -148,7 +149,8 @@ int DemoPlugin::Init(void) {
 	// Notify OpenCPN what callbacks the plugin registers to receive
 	return (WANTS_CONFIG | INSTALLS_TOOLBOX_PAGE | WANTS_PREFERENCES | INSTALLS_TOOLBAR_TOOL
 		| WANTS_NMEA_EVENTS | WANTS_NMEA_SENTENCES | WANTS_LATE_INIT | WANTS_PLUGIN_MESSAGING
-		| WANTS_OVERLAY_CALLBACK | WANTS_OPENGL_OVERLAY_CALLBACK );
+		| WANTS_OVERLAY_CALLBACK | WANTS_OPENGL_OVERLAY_CALLBACK | WANTS_MOUSE_EVENTS 
+		| WANTS_CURSOR_LATLON | WANTS_ONPAINT_VIEWPORT | WANTS_KEYBOARD_EVENTS);
 }
 
 // OpenCPN is either closing down, or the plugin has been disabled from the Preferences Dialog
@@ -339,9 +341,9 @@ void DemoPlugin::OnContextMenuItemCallback(int id) {
 void DemoPlugin::OnContextMenuItemCallbackExt(int id, std::string obj_ident, std::string obj_type, double lat, double lon) {
 
 	if (id == demoAISContextMenuId) {
-		wxMessageBox(wxString::Format("Object Id: %d\nObject Identifier (MMSI): %s\nObject Type: %s\nLatitude: %s\nLongitude: %s",
+		wxMessageBox(wxString::Format("AIS Target Information\nObject Id: %d\nObject Identifier (MMSI): %s\nObject Type: %s\nLatitude: %s\nLongitude: %s",
 			id, obj_ident.c_str(), obj_type.c_str(),
-			toSDMM_PlugIn(1, lat, true), toSDMM_PlugIn(2, lon, true)), "AIS Target Information", wxOK | wxICON_INFORMATION);
+			toSDMM_PlugIn(1, lat, true), toSDMM_PlugIn(2, lon, true)), "Demo Plugin", wxOK | wxICON_INFORMATION);
 	}
 }
 
@@ -979,6 +981,20 @@ bool DemoPlugin::RenderOverlayMultiCanvas(wxDC& dc, PlugIn_ViewPort* vp,
 			dc.SetPen(*wxBLUE_PEN);
 			dc.SetBrush(*wxBLUE_BRUSH);
 			dc.DrawPolygon(std::size(arrow), arrow);
+
+			// Demonstrate interacting with the canvas
+			// Refer to MouseEventHook & SetCursorLatLon
+			if (g_someBooleanValue) {
+				wxPoint bitmapLocation;
+				double latitude = currentLatitude + (2 * k_LatitudeMinute);
+
+				// Display an icon 2Nm north of the vessel
+				GetCanvasPixLL(vp, &bitmapLocation, latitude, currentLongitude);
+
+				// Centre the bitmap, remembering its dimensions are 32 x 32 pixels
+				// Plugins could also scale the icon depending on the chart scale returned in the viewpoint
+				dc.DrawBitmap(g_pluginBitmap, bitmapLocation.x - 16, bitmapLocation.y - 16, true);
+			}
 		}
 	}
 
@@ -1042,6 +1058,7 @@ bool DemoPlugin::RenderOverlayMultiCanvas(wxDC& dc, PlugIn_ViewPort* vp,
 		gc->DrawLines(std::size(arrow), arrow);
 		gc->PopState();
 		gc->Flush();
+
 	}
 	return true;
 }
@@ -1093,7 +1110,7 @@ bool DemoPlugin::RenderGLOverlayMultiCanvas(wxGLContext* pcontext, PlugIn_ViewPo
 
 	double drawnAngle = apparentWindAngle + magneticHeading;
 
-	// Normalize Wind Angle, remebering 3'oclock on the screen is 0 degrees
+	// Normalize Wind Angle, remembering 3'oclock on the screen is 0 degrees
 	drawnAngle = std::fmod(drawnAngle + 360.0, 360.0);
 	drawnAngle -= 90.0;
 
@@ -1165,8 +1182,110 @@ bool DemoPlugin::RenderGLOverlayMultiCanvas(wxGLContext* pcontext, PlugIn_ViewPo
 	// Note, could position the label better
 	demoGraphicsContext->DrawText(label, static_cast<int>(cosA* arrowInnerLength + boatLocation.x) - (textWidth / 2),
 		static_cast<int>(sinA* arrowInnerLength + boatLocation.y));
-	
+
+
+	// Demonstrate interacting with the canvas
+	// Refer to MouseEventHook & SetCursorLatLon
+	if (g_someBooleanValue) {
+		wxPoint bitmapLocation;
+		double latitude = currentLatitude + (2 * k_LatitudeMinute);
+
+		// Display an icon 2Nm north of the vessel
+		GetCanvasPixLL(vp, &bitmapLocation, latitude, currentLongitude);
+
+		// Centre the icon, remembering its dimensions are 32 x 32 pixels
+		// Plugins could also scale the icon depending on the chart scale returned in the viewpoint
+		demoGraphicsContext->DrawBitmap(g_pluginBitmap, bitmapLocation.x - 16, bitmapLocation.y - 16, true);
+	}
 	return true;
+}
+
+// Determine hit area in degrees. Assumes 32x32 pixel bitmap
+double DemoPlugin::GetHitSize() {
+
+	double latitudeA;
+	double latitudeB;
+	double longitudeTmp;
+
+	GetCanvasLLPix(&viewPort, wxPoint(0, 0), &latitudeA, &longitudeTmp);
+	GetCanvasLLPix(&viewPort, wxPoint(16, 16), &latitudeB, &longitudeTmp);
+
+	return std::abs(latitudeB - latitudeA);
+}
+
+// Persist the viewport (chart scale, extents etc)
+// Requires WANTS_ONPAINT_VIEWPORT
+void DemoPlugin::SetCurrentViewPort(PlugIn_ViewPort& vp) {
+	viewPort = vp;
+}
+
+// Get the geographic position of the cursor as it moves across the canvas
+// If the cursor is over our icon, enable our context menu item, otherwise disable it.
+// Requires WANTS_CURSOR_LATLON
+void DemoPlugin::SetCursorLatLon(double lat, double lon) {
+
+	// In this demo, as we only draw our icon on the first canvas
+	if (GetCanvasIndexUnderMouse() != 0) {
+		return;
+	}
+
+	// Ordinarily plugins would persist information about their objects
+	// rather than recomputing
+	const double latitude = currentLatitude + (2 * k_LatitudeMinute);
+
+	const double hitSize = GetHitSize();
+
+	// Hit Test, Enable or disable our context menu item 
+	if (std::abs(lat - latitude) <= hitSize &&
+		std::abs(lon - currentLongitude) <= hitSize) {
+		SetCanvasContextMenuItemGrey(demoContextMenuId, false);
+	}
+	else {
+		SetCanvasContextMenuItemGrey(demoContextMenuId, true);
+	}
+}
+
+// Handles mouse and touch events on the canvas. In this example, used to detect 
+// if the user has clicked on the icon we've dropped on the canvas.
+// Requires WANTS_MOUSE_EVENTS
+bool DemoPlugin::MouseEventHook(wxMouseEvent& event) {
+
+	// In this demo, as we only draw our icon on the first canvas
+	if (GetCanvasIndexUnderMouse() != 0) {
+		return false;
+	}
+
+	if (event.LeftDClick()) {
+
+		// Convert mouse position (pixels) to lat/lon
+		double mouseLat;
+		double mouseLon;
+		GetCanvasLLPix(&viewPort, event.GetPosition(), &mouseLat, &mouseLon);
+
+		// Compute icon center (2 Nm north of current position)
+		const double iconLat = currentLatitude + (2 * k_LatitudeMinute);
+		const double iconLon = currentLongitude;
+
+		const double hitSize = GetHitSize();
+
+		// Hit test, if we've clicked on our icon
+		if (std::abs(mouseLat - iconLat) <= hitSize &&
+			std::abs(mouseLon - iconLon) <= hitSize) {
+			wxMessageBox("Clicked on our icon", "Demo Plugin");
+		}
+	}
+	// Returning false allows further processing of the mouse event
+	return false; 
+}
+
+// Handle keyboard events, we'll display a message box if the user has pressed 
+// our "special" hot key "Ctrl-D"
+bool DemoPlugin::KeyboardEventHook(wxKeyEvent& event) {
+	if (event.GetKeyCode() == WXK_CONTROL_D) {
+		wxMessageBox(wxString::Format("Pressed Control-D"), "Demo Plugin");
+		return true;
+	}
+	return false;
 }
 
 void DemoPlugin::LoadSettings() {

@@ -90,6 +90,10 @@ public:
 	bool RenderOverlayMultiCanvas(wxDC& dc, PlugIn_ViewPort* vp, int canvasIndex, int priority) override;
 	bool RenderGLOverlayMultiCanvas(wxGLContext* pcontext, PlugIn_ViewPort* vp,
 		int canvasIndex, int priority) override;
+	void SetCursorLatLon(double lat, double lon) override;
+	bool MouseEventHook(wxMouseEvent& event) override;
+	void SetCurrentViewPort(PlugIn_ViewPort& vp) override;
+	bool KeyboardEventHook(wxKeyEvent& event) override;
 
 private:
 	void LoadSettings();
@@ -119,6 +123,8 @@ private:
 	// Chart Viewport (scale, chart extents etc.)
 	PlugIn_ViewPort viewPort;
 
+	double GetHitSize();
+	
 	// Wind angle and speed
 	double apparentWindAngle;
 	double apparentWindSpeed;
