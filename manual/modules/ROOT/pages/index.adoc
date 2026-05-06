@@ -1464,6 +1464,63 @@ pluginDC->DrawText(label, 100 - (textWidth / 2), 100);
 
 === Chapter 14. Interacting with the canvas
 
+Oops, nearly forgot this important part. Having drawn on the canvas, users may want 
+actually to interact with it!
+
+Firstly, getting information on where the cursor is located on-screen is obtained 
+by the callback API SetCursorLatLon which is registered by returning the value 
+WANTS_CURSOR_LATLON in the Init function.
+
+[source,cpp]
+----
+void DemoPlugin::SetCursorLatLon(double lat, double lon) {
+	// Do something with the latitude and longitude
+	// Eg. determine if the cursor is positioned on something we've drawn on screen.
+}
+----
+
+The previously mentioned API's; GetCanvasLLPix and GetCanvasPixLL are used to 
+convert screen co-ordinates (pixels) to geographic co-ordinates and vice versa.
+
+To handle mouse interactions, plugins use another callback API, MouseEventHook which 
+is registered by returning WANTS_MOUSE_EVENTS to the Init function.
+
+[source,cpp]
+----
+bool DemoPlugin::MouseEventHook(wxMouseEvent& event) {
+
+	// Only interested in left double click
+	if (event.LeftDClick()) {
+		
+		// Convert the screen co-ordinates for the click event to geographic co-ordinates
+		double latitude, longitude;
+		GetCanvasLLPix(&viewPort, event.GetPosition(), &latitude, &longitude);
+
+		// Do something with the click event
+	}
+	return false;
+}
+----
+
+Note the importance of the return value. Returning false allows the mouse event to 
+be propagated for further processing while returning true will end further propagation. 
+
+Similarly for keyboard handling, plugins can use the callback API, KeyboardEventHook which 
+is registered by returning WANTS_KEYBOARD_EVENTS to the Init function.
+
+This is the mechanism that plugins may use to implement Shortcut keys to their 
+specific functions. Again the return value determines whether the key event is propagated.
+
+[source,cpp]
+----
+bool DemoPlugin::KeyboardEventHook(wxKeyEvent& event) {
+	if (event.GetKeyCode() == WXK_CONTROL_D) {
+		wxMessageBox(wxString::Format("Pressed Control-D"), "Demo Plugin");
+	}
+	return false;
+}
+----
+
 === Chapter 15. wxWidgets Advanced User Interface
 
 === Chapter 16. Chart
