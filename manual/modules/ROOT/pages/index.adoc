@@ -1495,6 +1495,139 @@ bool DemoPlugin::KeyboardEventHook(wxKeyEvent& event) {
 
 === Chapter 15. wxWidgets Advanced User Interface
 
+wxWidgets Advance User Interface (wxAUI) allows plugins to implement a rich user 
+interface allowing multiple elements to be displayed, floated, docked and have their 
+state to be maintained by.OpenCPN. wxAUI offers a richer set of display options than 
+compared to using modal or non-modal dialogs or plugin launched windows, frames or forms.
+
+Plugins need to retrieve the wxAUI Manager from OpenCPN to register, update and display 
+their UI elements with the AUIManager a reference which is obtained through the API 
+GetFrameAuiManager. Plugins also need to register for callbck API's by returning the 
+value USES_AUI_MANAGER in the Init function.
+
+Plugins then initialize the wxPaneInfo class and update the AUI Manager. In this demo 
+the AUI managed window is a simple dashboard.
+
+image::demo_plugin-25.png
+
+[source,cpp]
+----
+demoDash = std::make_unique<DemoDashboard>(GetOCPNCanvasWindow());
+
+// Add the demo dashboard to the AUI Manager
+wxAuiPaneInfo paneInfo;
+paneInfo.Name(PLUGIN_API_NAME);
+paneInfo.Caption(PLUGIN_API_NAME).CaptionVisible(true);
+paneInfo.MinimizeButton(true);
+paneInfo.CloseButton(true);
+paneInfo.GripperTop(true);
+paneInfo.Float();
+paneInfo.MinSize(demoDash->GetMinSize());
+paneInfo.Show(isToolbarActive);
+auiManager->AddPane(demoDash.get(), paneInfo);
+auiManager->Update();
+auiManager->Bind(wxEVT_AUI_PANE_CLOSE, &DemoPlugin::OnPaneClose, this);
+----
+
+In this example, the display of the dashboard is toggled using the OpenCPN toolbar 
+which was previously described in Chapter 5.
+
+[source,cpp]
+----
+if (id == demoToolbarId) {
+	// Toggle the display of the wxAUI Demo
+	isToolbarActive = !isToolbarActive;
+	auiManager->GetPane(PLUGIN_API_NAME).Show(isToolbarActive);
+	auiManager->Update();
+	SetToolbarItemState(id, isToolbarActive);
+}
+----
+
+Note that as the demo dashboard display is shown or hidden, the toolbar button state 
+is also changed.
+
+image::demo_plugin-26.png
+
+During the initialization of the AUI Manager the plugin registered for the 
+AUI_PANE_CLOSE event. Upon receiving these events, the plugin may also determine 
+whether the AUI managed window is shown or hidden and synchronise any other state as 
+required, in this case the toolbar button state.
+
+[source,cpp]
+----
+void DemoPlugin::OnPaneClose(wxAuiManagerEvent& event) {
+	if (event.GetPane()->name == PLUGIN_API_NAME) {
+		isToolbarActive = false;
+		SetToolbarItemState(demoToolbarId, isToolbarActive);
+	}
+	else {
+		event.Skip();
+	}
+}
+----
+
+Another benefit of wxAUI is that OpenCPN saves the state of any AUI managed windows. 
+When OpenCPN starts it will restore the state, simplifying the "plumbing" for plugin 
+developers. The callback API UpdateAUIStatus can be implemented by plugins to detect 
+when the wxAUI status has changed, providing plugins the opportunity to synchronise 
+any associated state, such as in this demo the toolbar button state. 
+
+[source, cpp]
+----
+void DemoPlugin::UpdateAuiStatus(void) {
+
+	if (auiManager->GetPane(PLUGIN_API_NAME).IsOk()) {
+		isToolbarActive = auiManager->GetPane(PLUGIN_API_NAME).IsShown();
+		SetToolbarItemState(demoToolbarId, isToolbarActive);
+	}
+----
+
+Also worth noting some of other API's not necessarily required for AUI managed windows 
+but important nonetheless.
+
+When the user changes the colour scheme for OpenCPN (day, dusk, night), plugins receive
+a notification from the callback API SetColorScheme. This allows plugins to respond 
+to user changes of the colour schema, perhaps by changing the colours of their UI 
+elements, or for plugns that interact with switching systems, turn on/off lights, send 
+commands over a network to change instrument displays or MFD's.
+
+[source,cpp]
+----
+void DemoPlugin::SetColorScheme(PI_ColorScheme cs) {
+	if ((cs == PI_GLOBAL_COLOR_SCHEME_DUSK) || (cs == PI_GLOBAL_COLOR_SCHEME_NIGHT)) {
+		demoDash->SetNightMode(true);
+	}
+	else {
+		demoDash->SetNightMode(false);
+	}
+}
+----
+
+To apply OpenCPN colour schemes to plugin UI elements, the OpenCPN API DimeWindow will 
+apply the configured colour scheme to the plugin. For example in the Demo Dashboard 
+when the colour scheme is changed, it applies the background colour to all of its 
+child controls. (It does however apply its own colours to the foreground)
+
+[source,cpp]
+----
+DimeWindow(this);
+    
+wxColour background = GetBackgroundColour();
+
+wxWindowList& children = this->GetChildren();
+
+for (wxWindowList::iterator it = children.begin(); it != children.end(); ++it) {
+	wxWindow* child = *it;
+	child->SetBackgroundColour(background);
+	child->SetForegroundColour(mode ? *wxWHITE : *wxBLACK);
+}
+----
+
+image::demo_plugin-27.png
+
+For further information about wxAUI, you should refer to the wxWidgets official 
+documentation.
+
 === Chapter 16. Chart
 
 

@@ -127,3 +127,36 @@ class DemoToolboxBase : public wxPanel
 
 };
 
+///////////////////////////////////////////////////////////////////////////////
+/// Class DemoDashboardBase
+///////////////////////////////////////////////////////////////////////////////
+class DemoDashboardBase : public wxPanel
+{
+	private:
+
+	protected:
+		wxStaticText* windSpeedLabel;
+		wxTextCtrl* windSpeedValue;
+		wxStaticText* windAngleLabel;
+		wxTextCtrl* windAngleValue;
+		wxStaticText* positionLabel;
+		wxTextCtrl* latitudeValue;
+		wxTextCtrl* longitudeValue;
+		wxBoxSizer* sizerCompass;
+		wxPanel* panelCompass;
+		wxButton* buttonCopy;
+		wxButton* buttonClose;
+
+		// Virtual event handlers, override them in your derived class
+		virtual void OnButtonCopy( wxCommandEvent& event ) { event.Skip(); }
+		virtual void OnButtonClose( wxCommandEvent& event ) { event.Skip(); }
+
+
+	public:
+
+		DemoDashboardBase( wxWindow* parent, wxWindowID id = wxID_ANY, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( 500,300 ), long style = wxTAB_TRAVERSAL, const wxString& name = wxEmptyString );
+
+		~DemoDashboardBase();
+
+};
+
