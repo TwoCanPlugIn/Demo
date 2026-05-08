@@ -192,3 +192,92 @@ DemoToolboxBase::DemoToolboxBase( wxWindow* parent, wxWindowID id, const wxPoint
 DemoToolboxBase::~DemoToolboxBase()
 {
 }
+
+DemoDashboardBase::DemoDashboardBase( wxWindow* parent, wxWindowID id, const wxPoint& pos, const wxSize& size, long style, const wxString& name ) : wxPanel( parent, id, pos, size, style, name )
+{
+	wxBoxSizer* sizerPanel;
+	sizerPanel = new wxBoxSizer( wxVERTICAL );
+
+	wxGridSizer* sizerGrid;
+	sizerGrid = new wxGridSizer( 2, 2, 0, 0 );
+
+	wxBoxSizer* sizerWindSpeed;
+	sizerWindSpeed = new wxBoxSizer( wxVERTICAL );
+
+	windSpeedLabel = new wxStaticText( this, wxID_ANY, _("Wind Speed"), wxDefaultPosition, wxDefaultSize, 0 );
+	windSpeedLabel->Wrap( -1 );
+	sizerWindSpeed->Add( windSpeedLabel, 0, wxALL, 5 );
+
+	windSpeedValue = new wxTextCtrl( this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxTE_READONLY );
+	sizerWindSpeed->Add( windSpeedValue, 0, wxALL|wxEXPAND, 5 );
+
+
+	sizerGrid->Add( sizerWindSpeed, 1, wxEXPAND, 5 );
+
+	wxBoxSizer* sizerWindAngle;
+	sizerWindAngle = new wxBoxSizer( wxVERTICAL );
+
+	windAngleLabel = new wxStaticText( this, wxID_ANY, _("Wind Angle"), wxDefaultPosition, wxDefaultSize, 0 );
+	windAngleLabel->Wrap( -1 );
+	sizerWindAngle->Add( windAngleLabel, 0, wxALL, 5 );
+
+	windAngleValue = new wxTextCtrl( this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxTE_READONLY );
+	sizerWindAngle->Add( windAngleValue, 0, wxALL|wxEXPAND, 5 );
+
+
+	sizerGrid->Add( sizerWindAngle, 1, wxEXPAND, 5 );
+
+	wxBoxSizer* sizerPosition;
+	sizerPosition = new wxBoxSizer( wxVERTICAL );
+
+	positionLabel = new wxStaticText( this, wxID_ANY, _("Position"), wxDefaultPosition, wxDefaultSize, 0 );
+	positionLabel->Wrap( -1 );
+	sizerPosition->Add( positionLabel, 0, wxALL, 5 );
+
+	latitudeValue = new wxTextCtrl( this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxTE_READONLY );
+	sizerPosition->Add( latitudeValue, 0, wxALL|wxEXPAND, 5 );
+
+	longitudeValue = new wxTextCtrl( this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxTE_READONLY );
+	sizerPosition->Add( longitudeValue, 0, wxALL|wxEXPAND, 5 );
+
+
+	sizerGrid->Add( sizerPosition, 1, wxEXPAND, 5 );
+
+	sizerCompass = new wxBoxSizer( wxVERTICAL );
+
+	panelCompass = new wxPanel( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
+	sizerCompass->Add( panelCompass, 1, wxEXPAND | wxALL, 5 );
+
+
+	sizerGrid->Add( sizerCompass, 1, wxEXPAND, 5 );
+
+
+	sizerPanel->Add( sizerGrid, 1, wxEXPAND, 5 );
+
+	wxBoxSizer* sizerButtons;
+	sizerButtons = new wxBoxSizer( wxHORIZONTAL );
+
+
+	sizerButtons->Add( 0, 0, 1, wxEXPAND, 5 );
+
+	buttonCopy = new wxButton( this, wxID_ANY, _("Copy"), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerButtons->Add( buttonCopy, 0, wxALL, 5 );
+
+	buttonClose = new wxButton( this, wxID_ANY, _("Close"), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerButtons->Add( buttonClose, 0, wxALL, 5 );
+
+
+	sizerPanel->Add( sizerButtons, 0, wxEXPAND, 5 );
+
+
+	this->SetSizer( sizerPanel );
+	this->Layout();
+
+	// Connect Events
+	buttonCopy->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DemoDashboardBase::OnButtonCopy ), NULL, this );
+	buttonClose->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DemoDashboardBase::OnButtonClose ), NULL, this );
+}
+
+DemoDashboardBase::~DemoDashboardBase()
+{
+}

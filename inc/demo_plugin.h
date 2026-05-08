@@ -32,6 +32,8 @@
 #include <wx/fileconf.h>
 #include <wx/graphics.h>
 #include <wx/glcanvas.h>
+#include <wx/aui/aui.h>
+#include <wx/aui/framemanager.h>
 
 // Defines version numbers, names etc. for this plugin
 // This is automagically constructed via config.h.in from CMakeLists.txt
@@ -54,6 +56,9 @@
 
 // Bundled OpenCPN Device Context layer that supports both OpenGL and non OpenGL
 #include "pidc.h"
+
+// Implements a simple dashboard for the AUI demo
+#include "demo_dash.h"
 
 class DemoPlugin : public opencpn_plugin_120, public wxEvtHandler {
 public:
@@ -94,6 +99,8 @@ public:
 	bool MouseEventHook(wxMouseEvent& event) override;
 	void SetCurrentViewPort(PlugIn_ViewPort& vp) override;
 	bool KeyboardEventHook(wxKeyEvent& event) override;
+	void UpdateAuiStatus(void) override;
+	void SetColorScheme(PI_ColorScheme cs) override;
 
 private:
 	void LoadSettings();
@@ -198,6 +205,12 @@ private:
 	// OpenCPN SignalK
 	void HandleSignalK(ObservedEvt ev);
 	std::shared_ptr<ObservableListener> listener_signalk;
+
+	// wxAUI demo
+	wxAuiManager* auiManager;
+	void OnPaneClose(wxAuiManagerEvent& event);
+	std::unique_ptr<DemoDashboard> demoDash;
+
 };
 
 #endif 

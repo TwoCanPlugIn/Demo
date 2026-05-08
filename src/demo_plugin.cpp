@@ -51,6 +51,7 @@
 //			   Drawing on the Canvas Non OpenGL - (12c. Using Graphics Context transform/translate functions etc.)
 // Chapter 13. Drawing on the Canvas using OpenGL
 // Chapter 14. Interacting with the canvas
+// Chapter 15. Using wxWidgets Advanced User Interface (wxAUI)
 
 #include "demo_plugin.h"
 
@@ -145,17 +146,36 @@ int DemoPlugin::Init(void) {
 		HandleNavData(ev);
 		});
 
+	// Initialize the wxWidgets AUI Manager and our dashboard
+	auiManager = GetFrameAuiManager();
+
+	demoDash = std::make_unique<DemoDashboard>(GetOCPNCanvasWindow());
+
+	// Add the demo dashboard to the AUI Manager
+	wxAuiPaneInfo paneInfo;
+	paneInfo.Name(PLUGIN_API_NAME);
+	paneInfo.Caption(PLUGIN_API_NAME).CaptionVisible(true);
+	paneInfo.MinimizeButton(true);
+	paneInfo.CloseButton(true);
+	paneInfo.GripperTop(true);
+	paneInfo.Float();
+	paneInfo.MinSize(demoDash->GetMinSize());
+	paneInfo.BestSize(250, 250);
+	paneInfo.Show(isToolbarActive);
+	auiManager->AddPane(demoDash.get(), paneInfo);
+	auiManager->Update();
+	auiManager->Bind(wxEVT_AUI_PANE_CLOSE, &DemoPlugin::OnPaneClose, this);
 
 	// Notify OpenCPN what callbacks the plugin registers to receive
 	return (WANTS_CONFIG | INSTALLS_TOOLBOX_PAGE | WANTS_PREFERENCES | INSTALLS_TOOLBAR_TOOL
 		| WANTS_NMEA_EVENTS | WANTS_NMEA_SENTENCES | WANTS_LATE_INIT | WANTS_PLUGIN_MESSAGING
 		| WANTS_OVERLAY_CALLBACK | WANTS_OPENGL_OVERLAY_CALLBACK | WANTS_MOUSE_EVENTS 
-		| WANTS_CURSOR_LATLON | WANTS_ONPAINT_VIEWPORT | WANTS_KEYBOARD_EVENTS);
+		| WANTS_CURSOR_LATLON | WANTS_ONPAINT_VIEWPORT | WANTS_KEYBOARD_EVENTS
+		| USES_AUI_MANAGER);
 }
 
 // OpenCPN is either closing down, or the plugin has been disabled from the Preferences Dialog
 bool DemoPlugin::DeInit(void) {
-
 	// Note, OpenCPN doesn't actually care about the return value
 	return true; 
 }
@@ -350,18 +370,10 @@ void DemoPlugin::OnContextMenuItemCallbackExt(int id, std::string obj_ident, std
 // Invoked when the plugin's toolbar button is presssed
 void DemoPlugin::OnToolbarToolCallback(int id) {
 	if (id == demoToolbarId) {
-		// Just display a message box. 
-		// Note toggling the state of the toolbar while the message box is displayed
+		// Toggle the display of the wxAUI Demo
 		isToolbarActive = !isToolbarActive;
-		SetToolbarItemState(id, isToolbarActive);
-		//ReverseRoute();
-		//CreateRoute();
-		//ModifyWaypoint();
-		//CreateWaypoint();
-		//GetAllRoutes();
-		//GetAllWaypoints();
-		wxMessageBox(wxString::Format("Demo Toolbar invoked, Id: %d", id), "Demo Plugin");
-		isToolbarActive = !isToolbarActive;
+		auiManager->GetPane(PLUGIN_API_NAME).Show(isToolbarActive);
+		auiManager->Update();
 		SetToolbarItemState(id, isToolbarActive);
 	}
 }
@@ -418,6 +430,14 @@ void DemoPlugin::HandleNavData(ObservedEvt ev) {
 
 	if (!messagingDriver.empty()) {
 		SendJSONMessage(messagingDriver, pluginMessage.ToStdString());
+	}
+
+	// Update the wxAUI demo dashboard
+	if (demoDash) {
+		demoDash->SetMagneticHeading(magneticHeading);
+		demoDash->SetPosition(currentLatitude, currentLongitude);
+		demoDash->SetWindAngle(apparentWindAngle);
+		demoDash->SetWindSpeed(apparentWindSpeed);
 	}
 }
 
@@ -1183,7 +1203,6 @@ bool DemoPlugin::RenderGLOverlayMultiCanvas(wxGLContext* pcontext, PlugIn_ViewPo
 	demoGraphicsContext->DrawText(label, static_cast<int>(cosA* arrowInnerLength + boatLocation.x) - (textWidth / 2),
 		static_cast<int>(sinA* arrowInnerLength + boatLocation.y));
 
-
 	// Demonstrate interacting with the canvas
 	// Refer to MouseEventHook & SetCursorLatLon
 	if (g_someBooleanValue) {
@@ -1286,6 +1305,38 @@ bool DemoPlugin::KeyboardEventHook(wxKeyEvent& event) {
 		return true;
 	}
 	return false;
+}
+
+// wxAUI Manager event handler
+// Keep the toolbar button synchronized when the AUI pane is closed
+void DemoPlugin::OnPaneClose(wxAuiManagerEvent& event) {
+	if (event.GetPane()->name == PLUGIN_API_NAME) {
+		isToolbarActive = false;
+		SetToolbarItemState(demoToolbarId, isToolbarActive);
+	}
+	else {
+		event.Skip();
+	}
+}
+
+// UpdateAUI Status is invoked by OpenCPN when the saved AUI perspective is loaded
+// Use this to synch the toolbar button state when the AUI perspective is initially loaded
+void DemoPlugin::UpdateAuiStatus(void) {
+
+	if (auiManager->GetPane(PLUGIN_API_NAME).IsOk()) {
+		isToolbarActive = auiManager->GetPane(PLUGIN_API_NAME).IsShown();
+		SetToolbarItemState(demoToolbarId, isToolbarActive);
+	}
+}
+
+// Propogate OpenCPN colour scheme changes to the AUI demo dashboard
+void DemoPlugin::SetColorScheme(PI_ColorScheme cs) {
+	if ((cs == PI_GLOBAL_COLOR_SCHEME_DUSK) || (cs == PI_GLOBAL_COLOR_SCHEME_NIGHT)) {
+		demoDash->SetNightMode(true);
+	}
+	else {
+		demoDash->SetNightMode(false);
+	}
 }
 
 void DemoPlugin::LoadSettings() {

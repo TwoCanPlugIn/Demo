@@ -54,8 +54,9 @@ set(SRC
     ${CMAKE_SOURCE_DIR}/src/demo_globals.cpp
     ${CMAKE_SOURCE_DIR}/src/demo_wizard.cpp
     ${CMAKE_SOURCE_DIR}/src/demo_toolbox.cpp
-     ${CMAKE_SOURCE_DIR}/src/demo_settings.cpp
+    ${CMAKE_SOURCE_DIR}/src/demo_settings.cpp
     ${CMAKE_SOURCE_DIR}/src/demo_ui_base.cpp
+    ${CMAKE_SOURCE_DIR}/src/demo_dash.cpp
 )
 set (INC
     ${CMAKE_SOURCE_DIR}/inc/demo_plugin.h
@@ -64,6 +65,7 @@ set (INC
     ${CMAKE_SOURCE_DIR}/inc/demo_toolbox.h
     ${CMAKE_SOURCE_DIR}/inc/demo_settings.h
     ${CMAKE_SOURCE_DIR}/inc/demo_ui_base.h
+    ${CMAKE_SOURCE_DIR}/inc/demo_dash.h
 )
 
 set (SOURCE_FILES ${SRC} ${INC})
