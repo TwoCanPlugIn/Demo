@@ -1,8 +1,9 @@
-Shipdriver update to plugin API 118
-===================================
+Shipdriver template update to plugin API levels
+===============================================
 
-Since version 3.3.0 the shipdriver template supports using API 118. Compared
-to the commonly used API 116 this offers some new capabilities:
+The shipdriver template supports using different Plugin API levels. This allows
+developers to adopt the API level appropriate for their plugin feature set. The 
+benefits of newer plugin API levels include:
 
   - Better version handling, plugin carries the complete version info. This
     avoids the needs for various hacks in main openpcn used for older API
@@ -22,7 +23,7 @@ The update process:
 
 1. Ensure that the template is updated to 3.3.0 or higher
 
-2. In Plugin.cmake, change `set(PKG_API_LIB api-16)` to `set(PKG_API_LIB api-18)`
+2. In Plugin.cmake, change `set(PKG_API_LIB api-16)` to `the required API level`
 
 3. Add the following snippet to config.h.in:
    ```
@@ -34,28 +35,35 @@ The update process:
    #define PLUGIN
    ```
 
-4. In the main header file for the plugin (Shipdriver_pi.h for shipdriver)
-   find the snippet like
+4. In the main header file for the plugin (demo_plugin.h) find the snippet
    ```
-   class ShipDriver_pi : public opencpn_plugin_116 {
+   class DemoPlugin : public opencpn_plugin_118 {
    ```
-   Here, update to use `public opencpn_plugin_118` instead.
+   and update as required
+   ```
+   public opencpn_plugin_120
+   ```
 
-5. In the file which implements the constructor, find the snippet like
+6. In the file which implements the constructor src/demo_plugin.cpp change
    ```
-   ShipDriver_pi::ShipDriver_pi(void* ppimgr) : opencpn_plugin_116(ppimgr)
+   DemoPlugin::DemoPlugin(void* ppimgr) : opencpn_plugin_118(ppimgr)
    ```
-   Likewise, update this to `opencpn_plugin_118(ppimgr)`.  For shipdriver,
-   this is in src/ShipDriver_pi.cpp.
+   to match
+   ```
+   opencpn_plugin_120(ppimgr)
+   ```
 
-6. Implement new methods, typically in the file which implements
-   `GetAPIVersionMajor()`. In the shipdriver case, this is src/ShipDriver_pi.cpp
+8. Implement new methods, typically in the file which implements
+   ```
+   GetAPIVersionMajor()
+   ```
+   which can be found in src/demo_plugin.cpp
    ```
    int GetPlugInVersionPatch() { return PLUGIN_VERSION_PATCH; }
    int GetPlugInVersionPost() { return PLUGIN_VERSION_TWEAK; }
    const char *GetPlugInVersionPre() { return PKG_PRERELEASE; }
    const char *GetPlugInVersionBuild() { return PKG_BUILD_INFO; }
    ```
-   This is boilerplate code, same for all plugins. 
+   This is boilerplate code, and can be used for all plugins based on this Shipdriver template. 
 
-7. Build and test plugin. When completed, remove this document.
+10. Build and test plugin. 
