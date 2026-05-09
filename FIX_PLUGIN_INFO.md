@@ -25,8 +25,8 @@ In the next step redefine the API functions `GetCommonName()`,
 `GetShortDescription()` and `GetLongDescription()`. In the
 shipdriver case these lives in _src/Shipdriver_pi.cpp_ and becomes:
 
-    wxString ShipDriver_pi::GetCommonName() { return PLUGIN_API_NAME; }
-    wxString ShipDriver_pi::GetShortDescription() { return PKG_SUMMARY; }
-    wxString ShipDriver_pi::GetLongDescription() { return PKG_DESCRIPTION; }
+    wxString DemoPlugin::GetCommonName() { return PLUGIN_API_NAME; }
+    wxString DemoPlugin::GetShortDescription() { return PKG_SUMMARY; }
+    wxString DemoPlugin::GetLongDescription() { return PKG_DESCRIPTION; }
 
 This is boilerplate code common for all plugins.
