@@ -30,9 +30,16 @@
 #include <wx/filename.h>
 #include <wx/stdpaths.h>
 #include <wx/fileconf.h>
+#include <wx/file.h>
 
 // Bundled XML libraries
 #include <pugixml.hpp>
+
+// Bundled JSON libraries
+#include "wx/json_defs.h"
+#include "wx/jsonval.h"
+#include "wx/jsonreader.h"
+#include "wx/jsonwriter.h"
 
 // Defines version numbers, names etc. for this plugin
 // This is automagically constructed via config.h.in from CMakeLists.txt
@@ -73,7 +80,9 @@ public:
 private:
 	void LoadSettings();
 	void SaveSettings();
-	void FormatAsGPX(wxString fileName, wxArrayString guids);
+	void ExportAsGPX(const wxString& fileName, const wxArrayString& guids);
+	void ExportAsGeoJson(const wxString& fileName, const wxArrayString& guids);
+	void ExportWaypoints(const wxArrayString& guids);
 	
 	// Context Menu Id's
 	int exportWaypointMenuId;

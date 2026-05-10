@@ -81,5 +81,7 @@ macro(add_plugin_libraries)
     add_subdirectory(opencpn-libs/pugixml)
     target_link_libraries(${PACKAGE_NAME} ocpn::pugixml)
 
+    add_subdirectory("opencpn-libs/wxJSON")
+    target_link_libraries(${PACKAGE_NAME} ocpn::wxjson)
 
 endmacro ()

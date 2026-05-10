@@ -23,6 +23,7 @@
 // Date: 31/03/2026
 // Version History: 
 // 1.0 Initial Release
+// 03/05/2026 - 1.1 Export waypoints using GeoJSON format
 
 #include "demo_plugin.h"
 
@@ -73,8 +74,8 @@ int DemoPlugin::Init(void) {
 
 	// Example of adding an item to a sub context menu
 	// Valid Sub Menu Names are "Route", "Waypoint", "Track", "AIS")
-	auto gpxMenu = new wxMenuItem(NULL, k_SecondContextMenu, "Export GPX", "Export Waypoint as GPX", wxITEM_NORMAL, NULL);
-	exportWaypointMenuId = AddCanvasContextMenuItemExt(gpxMenu, this, "Waypoint");
+	auto exportMenu = new wxMenuItem(NULL, k_SecondContextMenu, "Export Waypoint", "Export Waypoint as GPX or GeoJSON", wxITEM_NORMAL, NULL);
+	exportWaypointMenuId = AddCanvasContextMenuItemExt(exportMenu, this, "Waypoint");
 
 	// Example of adding a Toolbar button
 	// Firstly obtain the toolbar button icons
@@ -197,39 +198,51 @@ void DemoPlugin::ShowPreferencesDialog(wxWindow* parent) {
 	}
 }
 
-// Export the selected waypoint
+// Export the selected waypoint using either GPX or GeoJSON format
 void DemoPlugin::OnContextMenuItemCallbackExt(int id, std::string obj_ident, std::string obj_type, double lat, double lon) {
 	if (id == exportWaypointMenuId) {
-
-		wxFileDialog fileSaveDialog(GetOCPNCanvasWindow(), _("Export GPX"),
-			wxStandardPaths::Get().GetDocumentsDir(), "", "GPX files (*.gpx)|*.gpx",
-			wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
-
-		if (fileSaveDialog.ShowModal() == wxID_OK) {
-			wxArrayString guids;
-			guids.Add(obj_ident);
-			FormatAsGPX(fileSaveDialog.GetPath(), guids);
-		}
+		wxArrayString guids;
+		guids.Add(obj_ident);
+		ExportWaypoints(guids);
 	}
 }
 
-// Export all waypoints using GPX format
+// Export all waypoints using either GPX or GeoJSON format
 void DemoPlugin::OnToolbarToolCallback(int id) {
 	if (id == exportWaypointsToolbarId) {
 		isToolbarActive = !isToolbarActive;
 		SetToolbarItemState(id, isToolbarActive);
-		
-		wxFileDialog fileSaveDialog(GetOCPNCanvasWindow(), _("Export GPX"),
-			wxStandardPaths::Get().GetDocumentsDir(), "", "GPX files (*.gpx)|*.gpx",
-			wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
-
-		if (fileSaveDialog.ShowModal() == wxID_OK) {
-			FormatAsGPX(fileSaveDialog.GetPath(), GetWaypointGUIDArray());
-		}
-		
+		ExportWaypoints(GetWaypointGUIDArray());
 		isToolbarActive = !isToolbarActive;
 		SetToolbarItemState(id, isToolbarActive);
 	}
+}
+
+// Display a file save dialog and depending on the file extension export as GPX or GeoJSON
+void DemoPlugin::ExportWaypoints(const wxArrayString& guids) {
+
+	wxFileDialog fileSaveDialog(GetOCPNCanvasWindow(), _("Export Waypoints"),
+		wxStandardPaths::Get().GetDocumentsDir(), "", "GPX (*.gpx)|*.gpx|GeoJson (*.txt)|*.txt",
+		wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+
+	if (fileSaveDialog.ShowModal() == wxID_OK) {
+		wxFileName filePath(fileSaveDialog.GetPath());
+
+		// Output as GPX
+		if (filePath.GetExt().compare("gpx") == 0) {
+			ExportAsGPX(fileSaveDialog.GetPath(), guids);
+		}
+
+		// Output as GeoJson
+		else if (filePath.GetExt().compare("txt") == 0) {
+			ExportAsGeoJson(fileSaveDialog.GetPath(), guids);
+		}
+
+		else {
+			wxMessageBox("Select .gpx or .txt for GPX or GeoJSON files", "Demo Plugin");
+		}
+	}
+
 }
 
 
@@ -254,7 +267,7 @@ void DemoPlugin::SaveSettings() {
 }
 
 // Export waypoint(s) formatted using GPX
-void DemoPlugin::FormatAsGPX(wxString fileName, wxArrayString guids) {
+void DemoPlugin::ExportAsGPX(const wxString& fileName, const wxArrayString& guids) {
 	pugi::xml_document doc;
 	// XML Declaration
 	pugi::xml_node decl = doc.append_child(pugi::node_declaration);
@@ -286,5 +299,67 @@ void DemoPlugin::FormatAsGPX(wxString fileName, wxArrayString guids) {
 	}
 	else {
 		wxMessageBox("Error saving GPX file " + fileName);
+	}
+}
+
+// Export waypoint(s) formatted GeoJSON
+void DemoPlugin::ExportAsGeoJson(const wxString& fileName, const wxArrayString& guids) {
+	wxJSONValue root;
+	
+	root["type"] = wxString("FeatureCollection");
+
+	// Array of features (we're just exporting waypoints that correspond to a point)
+	// I guess routes would be exported as a line.
+	wxJSONValue features(wxJSONTYPE_ARRAY);
+
+	PlugIn_Waypoint wpt;
+	for (auto it : guids) {
+		GetSingleWaypoint(it, &wpt);
+
+		wxJSONValue feature;
+		feature["type"] = wxString("Feature");
+
+		// Geometries could be a point, line etc.
+		wxJSONValue geometry;
+		geometry["type"] = wxString("Point");
+
+		// WTF, longitude first!
+		wxJSONValue coordinates(wxJSONTYPE_ARRAY);
+		coordinates.Append(wpt.m_lon);
+		coordinates.Append(wpt.m_lat);
+
+		geometry["coordinates"] = coordinates;
+
+		// Assign geometry to the feature
+		feature["geometry"] = geometry;
+
+		// Assign name & description to properties
+		wxJSONValue properties;
+		properties["name"] = wpt.m_MarkName;
+		properties["description"] = wpt.m_MarkDescription;
+		// Assign properties to the feature
+		feature["properties"] = properties;
+
+		// Add the feature to the features array
+		features.Append(feature);
+	}
+
+	// Finally assign features to the root object
+	root["features"] = features;
+
+	// Generate the string output
+	wxJSONWriter jsonWriter(wxJSONWRITER_STYLED);
+	wxString jsonOutput;
+	jsonWriter.Write(root, jsonOutput);
+
+	wxFile outputFile;
+	if (outputFile.Open(fileName, wxFile::write)) {
+		if (outputFile.Write(jsonOutput)) {
+			outputFile.Close();
+			wxMessageBox("Saved GeoJSON file " + fileName);
+		}
+	}
+	else {
+		wxMessageBox("Error saving GeoJSON file " + fileName);
 	}
 }
