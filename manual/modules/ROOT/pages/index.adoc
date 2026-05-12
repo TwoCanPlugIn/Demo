@@ -4,8 +4,7 @@
 
 Source: https://github.com/twocanplugin/demo [Github Repository]
 
-Releases: https://github.com/audiopilot/demo/releases [Github Releases]
-
+Releases: https://github.com/TwoCanPlugIn/Demo/tags [Github Releases]
 
 Forum:
 https://www.cruisersforum.com/forums/f134/aspiring-plugin-developers-300137.html[Cruisers Forum Thread]
