@@ -1,6 +1,6 @@
 site:
   title: Demo Plugin Manual
-  url:  https://nowhere.net
+  url:  https://github.com/twocanplugin/demo
   start_page: demo_plugin:ROOT:index.adoc
 
 content:

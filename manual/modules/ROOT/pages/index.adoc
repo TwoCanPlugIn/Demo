@@ -27,8 +27,6 @@ describe the installation of the prerequisites (compiler, cmake, wxWidgets etc.)
 Each of the following chapters are git commits/tags. Each chapter introduces a new scenario using a different set 
 of API's and should be independent of one another. That means you "should" be able to git cherry pick different 
 commits/tags to add specific features to the plugin.
-=======
-Demo Plugin - A plugin that may be of use to plugin developers learning to use the OpenCPN plugin API's
 
 == 2. Install
 
@@ -112,8 +110,6 @@ OpenCPN log file using wxLogMessage. This OpenCPN log is the preferred mechanism
 wxLogMessage("Demo Plugin, Speed Units: %s", getUsrSpeedUnit_Plugin());
 ----
 To log important error messages, you can also us wxLogError.
-=======
-image::demo_plugin-04.png
 
 In addition the plugin dumps some of the OpenCPN standard folder paths and user's measurement units into the OpenCPN log file
 using wxLogMessage. This OpenCPN log is the preferred mechanism for plugins to log messages. To log important error messages, 
