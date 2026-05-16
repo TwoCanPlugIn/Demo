@@ -24,6 +24,7 @@
 // Version History: 
 // 1.0 Initial Release
 // 03/05/2026 - 1.1 Export waypoints using GeoJSON format
+// 14/05/2026 - 1.2 Export Waypoints to SignalK
 
 #include "demo_plugin.h"
 
@@ -50,7 +51,7 @@ extern "C" DECL_EXP void destroy_pi(opencpn_plugin* p) {
 
 // Constructor
 // This release is a basic plugin that does not require any "newer" plugin API's beyond API v 1.17
-DemoPlugin::DemoPlugin(void* ppimgr) : opencpn_plugin_120(ppimgr) {
+DemoPlugin::DemoPlugin(void* ppimgr) : opencpn_plugin_120(ppimgr) , wxEvtHandler() {
 	
 	// Initialize the plugin bitmap, converting from SVG to PNG. Refer to GetPluginBitmap below
 	// Note the icon file is located in the source repository data folder
@@ -77,6 +78,11 @@ int DemoPlugin::Init(void) {
 	auto exportMenu = new wxMenuItem(NULL, k_SecondContextMenu, "Export Waypoint", "Export Waypoint as GPX or GeoJSON", wxITEM_NORMAL, NULL);
 	exportWaypointMenuId = AddCanvasContextMenuItemExt(exportMenu, this, "Waypoint");
 
+	// Export to SignalK
+	auto signalKMenu = new wxMenuItem(NULL, k_SecondContextMenu, "Export to SignalK", "Export Waypoint to SignalK", wxITEM_NORMAL, NULL);
+	exportSignalKMenuId = AddCanvasContextMenuItemExt(signalKMenu, this, "Waypoint");
+
+
 	// Example of adding a Toolbar button
 	// Firstly obtain the toolbar button icons
 	wxString pluginFolder = GetPluginDataDir(PKG_NAME) + wxFileName::GetPathSeparator() + "data" + wxFileName::GetPathSeparator();
@@ -94,6 +100,7 @@ int DemoPlugin::Init(void) {
 	// A flag used to indicate the toggled/untoggled state of the toolbar button
 	isToolbarActive = false;
 
+	
 	// Notify OpenCPN what callbacks the plugin registers to receive
 	return (WANTS_CONFIG | INSTALLS_TOOLBOX_PAGE | WANTS_PREFERENCES | INSTALLS_TOOLBAR_TOOL);
 }
@@ -204,6 +211,13 @@ void DemoPlugin::OnContextMenuItemCallbackExt(int id, std::string obj_ident, std
 		wxArrayString guids;
 		guids.Add(obj_ident);
 		ExportWaypoints(guids);
+	}
+
+	// BUG BUG, the SignalK Server address & port shoud be obtained from GetActiveDrivers
+	if (id == exportSignalKMenuId) {
+		wxString text = ExportToSignalK(obj_ident);
+		wxString uri("http://localhost:3000/signalk/v2/api/resources/waypoints");
+		PostToSignalK(uri, text);
 	}
 }
 
@@ -362,4 +376,96 @@ void DemoPlugin::ExportAsGeoJson(const wxString& fileName, const wxArrayString& 
 	else {
 		wxMessageBox("Error saving GeoJSON file " + fileName);
 	}
+}
+
+// Export Waypoint to SignalK, constructs the GeoJson object
+// BUG BUG should refactor with the GeoJson code
+wxString DemoPlugin::ExportToSignalK(std::string& guid) {
+	
+	PlugIn_Waypoint wpt;
+	GetSingleWaypoint(guid, &wpt);
+
+	wxJSONValue root;
+	
+	// Top-level fields
+	root["name"] = wpt.m_MarkName;
+	root["description"] = wpt.m_MarkDescription;
+	root["type"] = wxEmptyString;
+	
+	// Feature object
+	wxJSONValue feature;
+	feature["type"] = wxString("Feature");
+	// Empty properties object
+	wxJSONValue properties(wxJSONTYPE_OBJECT);
+	feature["properties"] = properties;
+	// Empty feature ID
+	feature["id"] = wxEmptyString; // Possibly wpt.m_GUID
+
+	// Geometry object
+	wxJSONValue geometry;
+	geometry["type"] = wxString("Point");
+	wxJSONValue coords(wxJSONTYPE_ARRAY);
+	coords.Append(wpt.m_lon); 
+	coords.Append(wpt.m_lat);
+	geometry["coordinates"] = coords;
+
+	// Add geometry to feature
+	feature["geometry"] = geometry;
+
+	// Add feature to root
+	root["feature"] = feature;
+
+	// Convert JSON object to string
+	wxJSONWriter writer;
+	wxString jsonString;
+	writer.Write(root, jsonString);
+
+	return jsonString;
+}
+
+// Send the waypoint as GeoJson to the SignalK Resource Provider
+bool DemoPlugin::PostToSignalK(wxString& url, wxString& jsonText) {
+
+	bool result = false;
+	// Create the request object
+	wxWebRequest request = wxWebSession::GetDefault().CreateRequest(this, url);
+	
+	// Specify the Post method
+	request.SetMethod("Post");
+	// Authorization
+	// BUG BUG This should be stored securely
+	request.SetHeader("Authorization", "Bearer gobbledygook");
+	
+	// Content Type
+	request.SetHeader("Content-Type", "application/json; charset=UTF-8");
+
+	// Finally the data itself.
+	request.SetData(jsonText, "application/json");
+
+	if (!request.IsOk()) {
+		wxLogError("Demo Plugin, Unexepected Web Request Error");
+		return false;
+	}
+
+	// The web request event handler (just a lambda function)
+	Bind(wxEVT_WEBREQUEST_STATE, [&result](wxWebRequestEvent& evt) {
+		switch (evt.GetState())	{
+			case wxWebRequest::State_Completed: 
+				wxMessageBox("Sent Waypoint to SignalK", "Demo Plugin");
+				result = true;
+			break;
+
+			case wxWebRequest::State_Failed:
+				wxMessageBox(wxString::Format("Failed to Send Waypoint to SignalK %s", 
+					evt.GetErrorDescription()), "Demo Plugin");
+				result = false;
+			break;
+			// Possibly handle	wxWebRequest::State_Unauthorized etc.
+		}
+	});
+
+	// Start the request
+	request.Start();
+
+	return result;
 }

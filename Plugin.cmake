@@ -35,14 +35,14 @@ set(OCPN_RELEASE_REPO
 set(PKG_NAME demoplugin_pi) #or _pi
 set(PKG_VERSION  1.0)
 set(PKG_PRERELEASE "")  # Empty, or a tag like 'beta'
-set(DISPLAY_NAME DemoPlugin)    # Dialogs, installer artifacts, ...
-set(PLUGIN_API_NAME DemoPlugin) # As of GetCommonName() in plugin API
-set(PKG_SUMMARY "Demonstration plugin")
-set(PKG_DESCRIPTION "Demonstration plugin, illustrates the use of the different OpenCPN Plugin API's ")
+set(DISPLAY_NAME GPX-Export)    # Dialogs, installer artifacts, ...
+set(PLUGIN_API_NAME GPX-Export) # As of GetCommonName() in plugin API
+set(PKG_SUMMARY "Export Waypoints")
+set(PKG_DESCRIPTION "GPX-Export, derived from DemoPlugin, export waypoints using GPX, GeoJson and to SignalK")
 set(PKG_AUTHOR "twocanplugin")
 set(PKG_IS_OPEN_SOURCE "yes")
 set(PKG_HOMEPAGE https://github.com/twocanplugin/demoplugin)
-set(PKG_INFO_URL https://twocanplugin.github.io/Demo/demo_plugin/index.html)
+set(PKG_INFO_URL https://twocanplugin.github.io/Demo)
 
 include_directories(${CMAKE_SOURCE_DIR}/inc)
 

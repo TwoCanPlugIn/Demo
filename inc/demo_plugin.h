@@ -31,6 +31,7 @@
 #include <wx/stdpaths.h>
 #include <wx/fileconf.h>
 #include <wx/file.h>
+#include <wx/webrequest.h>
 
 // Bundled XML libraries
 #include <pugixml.hpp>
@@ -49,7 +50,7 @@
 #include "ocpn_plugin.h"
 
 
-class DemoPlugin : public opencpn_plugin_120 {
+class DemoPlugin : public opencpn_plugin_120, public wxEvtHandler {
 public:
 	// Constructor
 	DemoPlugin(void* ppimgr);
@@ -76,20 +77,24 @@ public:
 	void ShowPreferencesDialog(wxWindow* parent) override;
 	void OnContextMenuItemCallbackExt(int id, std::string obj_ident, std::string obj_type, double lat, double lon) override;
 	void OnToolbarToolCallback(int id) override;
-	
+
 private:
 	void LoadSettings();
 	void SaveSettings();
 	void ExportAsGPX(const wxString& fileName, const wxArrayString& guids);
 	void ExportAsGeoJson(const wxString& fileName, const wxArrayString& guids);
 	void ExportWaypoints(const wxArrayString& guids);
+	wxString ExportToSignalK(std::string& guid);
+	bool PostToSignalK(wxString& url, wxString& jsonData);
 	
 	// Context Menu Id's
 	int exportWaypointMenuId;
+	int exportSignalKMenuId;
 	
 	// Toolbar button Id & state
 	int exportWaypointsToolbarId;
 	bool isToolbarActive;
+
 };
 
 #endif 
