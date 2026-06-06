@@ -17,37 +17,18 @@
 //
 
 //
-// Project: Demo Plugin
-// Description: Demonstrate the use of the OpenCPN plugin API's
+// Project: Gateway Plugin
+// Description: Derived from Demo plugin, a simple bi-directional NMEA 0183 <-> NMEA 2000 gateway
 // Owner: twocanplugin@hotmail.com
-// Date: 10/01/2026
+// Date: 17/04/2026
 // Version History: 
 // 1.0 Initial Release
-// Chapter 1. A Basic plugin, that does little except to dump some common OpenCPN file paths
-// Chapter 2. Plugin initial configuration and settings
-// Chapter 3. Saving & Loading settings and modifying settings using the toolbox
-// Chapter 4. User interaction - Context Menus
-// Chapter 5. User interaction - Toolbar Buttons
-// Chapter 6. Navigation Data - (6a. Using callback API, 6b. Using Observer/Listener model)
-// Chapter 7. NMEA 0183 - (7a. Receiving data using callback API, 7b. Using Observer/Listener model)
-//            NMEA 0183 - (7c. Transmitting Data using PushNMEABuffer API)
-//			  NMEA 0183 - (7d. Transmitting Data using Observer/Lisyener model)
-// Chapter 8. NMEA 2000 - (8a. Receiving NMEA 2000 data)
-//			  NMEA 2000 - (8b. Transmitting NMEA 2000 data)
 
 #include "demo_plugin.h"
 
-// Global variables accessed by the plugin and various dialogs
+#include "demo_gateway_ui.h"
+
 #include "demo_globals.h"
-
-// Implements a wxWizard dialog to configure the plugin's initial settings
-#include "demo_wizard.h"
-
-// Implements the toolbox page to demonstrate modifying settings from the Toobox page
-#include "demo_toolbox.h"
-
-// Implements a dialog to demonstrate modifying settings from the Plugin Preferences option
-#include "demo_settings.h"
 
 // The class factories, used to create and destroy instances of the PlugIn
 extern "C" DECL_EXP opencpn_plugin* create_pi(void *ppimgr) {
@@ -95,43 +76,8 @@ int DemoPlugin::Init(void) {
 	// Load the previously saved settings
 	LoadSettings();
 
-	// Example of adding an item to the root context menu
-	auto demoContextMenu = new wxMenuItem(NULL, k_FirstContextMenu, "Demo", "Demo Plugin Menu", wxITEM_NORMAL, NULL);
-	demoContextMenuId = AddCanvasContextMenuItem(demoContextMenu, this);
-
-	// Example of adding an item to a sub context menu
-	// Valid Sub Menu Names are "Route", "Waypoint", "Track", "AIS")
-	auto dscMenu = new wxMenuItem(NULL, k_SecondContextMenu, "AIS Demo", "Demo Plugin AIS Sub Menu", wxITEM_NORMAL, NULL);
-	demoAISContextMenuId = AddCanvasContextMenuItemExt(dscMenu, this, "AIS");
-
-	// Example of adding a Toolbar button
-	// Firstly obtain the toolbar button icons
-	wxString pluginFolder = GetPluginDataDir(PKG_NAME) + wxFileName::GetPathSeparator() + "data" + wxFileName::GetPathSeparator();
-
-	// This assumes the plugin is using Scaled Vector Graphics (SVG)
-	wxString normalIcon = pluginFolder + "demo_icon_normal.svg";
-	wxString toggledIcon = pluginFolder + "demo_icon_toggled.svg";
-	wxString rolloverIcon = pluginFolder + "demo_icon_rollover.svg";
-
-	// Finally add the toolbar button, note also requires INSTALLS_TOOLBAR_TOOL
-	// BUG BUG Note that OpenCPN does not implement the rollover state
-	demoToolbarId = InsertPlugInToolSVG("Demo", normalIcon,
-		rolloverIcon, toggledIcon, wxITEM_CHECK, "Demo", "Demo Plugin Toolbar Description", NULL, -1, 0, this);
-
-	// A flag used to indicate the toggled/untoggled state of the toolbar button
-	isToolbarActive = false;
-
-	// Register handler for OpenCPN Navigation Data observer/listener events
-	wxDEFINE_EVENT(EVT_NAV_DATA, ObservedEvt);
-	listener_nav = std::move(GetListener(NavDataId(), EVT_NAV_DATA, this));
-	Bind(EVT_NAV_DATA, [&](ObservedEvt ev) {
-		HandleNavData(ev);
-		});
-
-
 	// Notify OpenCPN what callbacks the plugin registers to receive
-	return (WANTS_CONFIG | INSTALLS_TOOLBOX_PAGE | WANTS_PREFERENCES | INSTALLS_TOOLBAR_TOOL
-		| WANTS_NMEA_EVENTS | WANTS_NMEA_SENTENCES | WANTS_LATE_INIT);
+	return (WANTS_CONFIG | INSTALLS_TOOLBOX_PAGE | WANTS_PREFERENCES | WANTS_LATE_INIT);
 }
 
 // OpenCPN is either closing down, or the plugin has been disabled from the Preferences Dialog
@@ -145,19 +91,38 @@ bool DemoPlugin::DeInit(void) {
 // before OpenCPN core services have been started, it allows a plugin to perform further 
 // initialization. Requires WANTS_LATE_INIT
 void DemoPlugin::LateInit(void) {
+
 	// Register subscriber for NMEA 0183 VHW Speed sentence
 	wxDEFINE_EVENT(EVT_183_VHW, ObservedEvt);
 	NMEA0183Id id_vhw = NMEA0183Id("VHW");
 	listener_vhw = std::move(GetListener(id_vhw, EVT_183_VHW, this));
 	Bind(EVT_183_VHW, [&](ObservedEvt ev) {
-		HandleVHW(ev);
+		ParseVHW(ev);
 		});
 
-	// Find an outbound NMEA 0183 connection to use with WriteCommDriver
-	nmea0183Driver = FindOutboundConnection("nmea0183");
-	if (nmea0183Driver.size() > 0) {
-		wxLogMessage("Demo Plugin, Using outbound NMEA 0183 network connection: %s", nmea0183Driver);
-	}
+	// Register subscriber for NMEA 0183 DPT Depth sentence
+	wxDEFINE_EVENT(EVT_183_DPT, ObservedEvt);
+	NMEA0183Id id_dpt = NMEA0183Id("DPT");
+	listener_dpt = std::move(GetListener(id_dpt, EVT_183_DPT, this));
+	Bind(EVT_183_DPT, [&](ObservedEvt ev) {
+		ParseDPT(ev);
+		});
+
+	// Register subscriber for NMEA 0183 MWV Wind sentence
+	wxDEFINE_EVENT(EVT_183_MWV, ObservedEvt);
+	NMEA0183Id id_mwv = NMEA0183Id("MWV");
+	listener_mwv = std::move(GetListener(id_mwv, EVT_183_MWV, this));
+	Bind(EVT_183_MWV, [&](ObservedEvt ev) {
+		ParseMWV(ev);
+		});
+
+	// Register subscriber for NMEA 0183 GLL Position sentence
+	wxDEFINE_EVENT(EVT_183_GLL, ObservedEvt);
+	NMEA0183Id id_gll = NMEA0183Id("GLL");
+	listener_gll = std::move(GetListener(id_gll, EVT_183_GLL, this));
+	Bind(EVT_183_GLL, [&](ObservedEvt ev) {
+		ParseGLL(ev);
+		});
 
 	// Register subscriber for PGN 130306 Wind
 	wxDEFINE_EVENT(EVT_N2K_130306, ObservedEvt);
@@ -167,7 +132,14 @@ void DemoPlugin::LateInit(void) {
 		HandleN2K_130306(ev);
 		});
 
-	
+	// Register subscriber for PGN 128267 Depth
+	wxDEFINE_EVENT(EVT_N2K_128267, ObservedEvt);
+	NMEA2000Id id_128267 = NMEA2000Id(128267);
+	listener_128267 = std::move(GetListener(id_128267, EVT_N2K_128267, this));
+	Bind(EVT_N2K_128267, [&](ObservedEvt ev) {
+		HandleN2K_128267(ev);
+		});
+
 	// Register Subcriber for PGN 128259 Boat Speed
 	wxDEFINE_EVENT(EVT_N2K_128259, ObservedEvt);
 	NMEA2000Id id_128259 = NMEA2000Id(128259);
@@ -176,18 +148,24 @@ void DemoPlugin::LateInit(void) {
 		HandleN2K_128259(ev);
 		});
 
-	// Find an outbound NMEA 2000 connection to use with WriteCommDriverN2K
-	nmea2000Driver = FindOutboundConnection("nmea2000");
-	if (!nmea2000Driver.empty()) {
-		wxLogMessage("Demo Plugin, Using outbound NMEA 2000 network connection: %s", nmea2000Driver);
-		// For the NMEA 2000 interface, plugins need to register what NMEA 2000 PGN's they transmit.
-		// This is required for Actisense NGT-1 Adapters
-		// Presumably results in a null operation (NOP) for other NMEA 2000 adapters
-		// In this demo plugin We will only transmit PGN 130306 Wind Speed and Direction
-		std::vector<int> transmittedPGN = { 130306 }; 
-		RegisterTXPGNs(nmea2000Driver, transmittedPGN);
-	}
+	// Register Subcriber for PGN 129025 Position
+	wxDEFINE_EVENT(EVT_N2K_129025, ObservedEvt);
+	NMEA2000Id id_129025 = NMEA2000Id(129025);
+	listener_129025 = std::move(GetListener(id_129025, EVT_N2K_129025, this));
+	Bind(EVT_N2K_129025, [&](ObservedEvt ev) {
+		HandleN2K_129025(ev);
+		});
 
+	// For the NMEA 2000 interface, plugins need to register what NMEA 2000 PGN's they transmit.
+	// This is required for Actisense NGT-1 Adapters
+	// Presumably results in a null operation (NOP) for other NMEA 2000 adapters
+	if (!g_nmea2000Driver.empty()) {
+		std::vector<int> transmittedPGN;
+		for (const auto& [pgn, description] : supportedConversions) {
+			transmittedPGN.push_back(pgn);
+		}
+		RegisterTXPGNs(g_nmea2000Driver.ToStdString(), transmittedPGN);
+	}
 }
 
 // OpenCPN Plugin "housekeeping" methods. All plugins MUST implement these
@@ -243,8 +221,8 @@ wxBitmap* DemoPlugin::GetPlugInBitmap() {
 
 // When the plugin is enabled, this API provides the opportunity to configure initial settings
 void DemoPlugin::SetDefaults(void) {
-	auto installationWizard = std::make_unique<DemoWizard>(GetOCPNCanvasWindow());
-	if (installationWizard->RunWizard(installationWizard->m_pages.at(0))) {
+	auto gatewaySettings = std::make_unique<DemoGatewayUI>(GetOCPNCanvasWindow(), wxID_ANY, _("Demo Preferences"));
+	if (wxID_OK == gatewaySettings->ShowModal()) {
 		SaveSettings();
 	}
 }
@@ -254,206 +232,123 @@ void DemoPlugin::SetupToolboxPanel(int page_sel, wxNotebook* pnotebook) {
 	wxMessageBox(wxString::Format("SetupToolboxPanel invoked: %d", page_sel), "Demo Plugin");
 }
 
-// Invoked when the OpenCPN Toolbox OK, Apply or Cancel buttons are pressed
-void DemoPlugin::OnCloseToolboxPanel(int page_sel, int ok_apply_cancel) {
-	// BUG BUG Why didn't they use standard enums like wxID_OK ??	
-	if ((ok_apply_cancel == 0) || (ok_apply_cancel == 4)) {
-		SaveSettings();
-	}
-}
-
-// Invoked at Startup and displayed when the OpenCPN Toolbox is displayed
-// Requires INSTALLS_TOOLBOX_PAGE
-void DemoPlugin::OnSetupOptions(void) {
-	// Add our toolbox to the "User Interface" tab
-	auto toolBoxWindow = AddOptionsPage(OptionsParentPI::PI_OPTIONS_PARENT_UI, _("Demo Settings"));
-	auto toolboxSizer = new wxBoxSizer(wxVERTICAL);
-	toolBoxWindow->SetSizer(toolboxSizer);
-	// Create our toolbox panel and add it to the toolbox via the sizer
-	auto demoToolbox =  new DemoToolbox(toolBoxWindow);
-	toolboxSizer->Add(demoToolbox, 1, wxALL | wxEXPAND);
-}
-
 // Invoked from he plugin's preferences option, enabling the user to modify the plugin's settings.
 // Requires WANTS_PREFERENCES
 void DemoPlugin::ShowPreferencesDialog(wxWindow* parent) {
-	auto demoSettings = std::make_unique<DemoSettings>(parent, wxID_ANY, _("Demo Preferences"));
-	if (wxID_OK == demoSettings->ShowModal()) {
+	auto gatewaySettings = std::make_unique<DemoGatewayUI>(parent, wxID_ANY, _("Demo Preferences"));
+	if (wxID_OK == gatewaySettings->ShowModal()) {
 		SaveSettings();
 	}
 }
 
-// Invoked when the plugin's context menu items are selected
-void DemoPlugin::OnContextMenuItemCallback(int id) {
+// Parse NMEA 0183 Speed through Waterl
+void DemoPlugin::ParseVHW(ObservedEvt ev) {
+	if (g_Speed == ConversionType::NMEA2000) {
+		NMEA0183Id id_183_vhw("VHW");
+		NMEA0183 parserNMEA0183;
+		wxString sentence = GetN0183Payload(id_183_vhw, ev);
+		parserNMEA0183 << sentence;
 
-	if (id == demoContextMenuId) {
-		// A plugin can optionally enable/disable their context menus with the following line
-		// SetCanvasContextMenuItemGrey(demoContextMenuId, false);
-		wxMessageBox(wxString::Format("Demo Context Menu Selected, Menu Id: %d", id), 
-			"Demo Plugin");
-	}
-}
-
-// Invoked when a plugin's context sub menu items are selected
-// Note requires an OpenCPN API level of 1.20 or higher
-void DemoPlugin::OnContextMenuItemCallbackExt(int id, std::string obj_ident, std::string obj_type, double lat, double lon) {
-
-	if (id == demoAISContextMenuId) {
-		wxMessageBox(wxString::Format("Object Id: %d\nObject Identifier (MMSI): %s\nObject Type: %s\nLatitude: %s\nLongitude: %s",
-			id, obj_ident.c_str(), obj_type.c_str(),
-			toSDMM_PlugIn(1, lat, true), toSDMM_PlugIn(2, lon, true)), "AIS Target Information", wxOK | wxICON_INFORMATION);
-	}
-}
-
-// Invoked when the plugin's toolbar button is presssed
-void DemoPlugin::OnToolbarToolCallback(int id) {
-	if (id == demoToolbarId) {
-		// Just display a message box. 
-		// Note toggling the state of the toolbar while the message box is displayed
-		isToolbarActive = !isToolbarActive;
-		SetToolbarItemState(id, isToolbarActive);
-		wxMessageBox(wxString::Format("Demo Toolbar invoked, Id: %d", id), "Demo Plugin");
-		isToolbarActive = !isToolbarActive;
-		SetToolbarItemState(id, isToolbarActive);
-	}
-}
-
-// The "old" method for receiving Navigation Data from OpenCPN. Requires WANTS_NMEA_EVENTS
-void DemoPlugin::SetPositionFixEx(PlugIn_Position_Fix_Ex& pfix) {
-	// Persist our current position and heading
-	// We will use the heading value in later chapters
-	currentLatitude = pfix.Lat;
-	currentLongitude = pfix.Lon;
-	trueHeading = pfix.Hdt;
-}
-
-// The "new" method for receiving Navigation Data from OpenCPN. The handler must be 
-// registered and the plugin class inherits from the wxWidgets wxEvtHandler class
-void DemoPlugin::HandleNavData(ObservedEvt ev) {
-	// Persist our current position and heading
-	// We will use the heading value in later chapters
-	PluginNavdata navdata = GetEventNavdata(ev);
-	currentLatitude = navdata.lat;
-	currentLongitude = navdata.lon;
-	trueHeading = navdata.hdt;
-
-	// As this is invoked by OpenCPN once per second, also use this to generate true wind
-	// sentences, using data received from wind and boat speed NMEA 0183 sentences
-	CalculateTrueWind();
-	// Generate the NMEA 0183 MWV sentence and transmit it.
-	// This is using the "old" API.
-	// PushNMEABuffer(FormatTrueWindSentence());
-	
-	// This is using the "new" Observer/Listener model.
-	// Only transmit if we have a valid outbound nmea0183 connection
-	if (!nmea0183Driver.empty()) {
-		wxString sentence = FormatTrueWindSentence();
-		SendNMEA0183(nmea0183Driver, sentence.ToStdString());
-	}
-
-	// Transmit NMEA 2000 message using Observer/Listener model
-	// Only transmit if we have a valid outbound nmea2000 connection
-	if (!nmea2000Driver.empty()) {
-		std::vector<uint8_t> payload = FormatTrueWindMessage();
-		SendNMEA2000(nmea2000Driver, 255, 4, 130306, payload);
-	}
-}
-
-// The "old" method for receiving NMEA 0183 data. The plugin will receive all sentences
-// so not necessarily very efficient. Requires WANTS_NMEA_SENTENCES
-void DemoPlugin::SetNMEASentence(wxString& sentence) {
-	// The sentence is the complete NMEA 0183 sentence as received by OpenCPN, including
-	// sentence delimiter, talker id, mnemonic, checksum delimiter (*) and checksum
-
-	// Using the NMEA 0183 libraries as included with OpenCPN
-	NMEA0183 parserNMEA0183;
-	parserNMEA0183 << sentence;
-	// This checks that the sentence is valid (has a talker id, mnemonic & valid checksum)
-	if (parserNMEA0183.PreParse()) {
-		// For this demo, we're only interested in data generated by a wind transducer
-		// $WIMWV,190.0,R,11.4,K,A*1A
-		if (parserNMEA0183.LastSentenceIDReceived == "MWV") {
-			ParseWind(&parserNMEA0183);
+		if (parserNMEA0183.Parse()) {
+			auto boatSpeed = parserNMEA0183.Vhw.Knots;
+			auto payload = GeneratePGN128259(toUsrSpeed_Plugin(boatSpeed, 3));
+			SendNMEA2000(g_nmea2000Driver.ToStdString(), 255, 4, 128259, payload);
 		}
 	}
 }
 
-// Extract the wind speed & angle from a NMEA 0183 MWV sentence
-void DemoPlugin::ParseWind(NMEA0183* nmeaSentence) {
-	if (nmeaSentence->Parse()) {
-		// Only interested in apparent wind angle rather than true wind angle
-		if (nmeaSentence->Mwv.Reference == "R") {
-			apparentWindAngle = nmeaSentence->Mwv.WindAngle;
-			// Using the helper API fromUsrWindSpeed_Plugin to convert the speed into knots
-			// WSPEED_KTS = 0, WSPEED_MS, WSPEED_MPH, WSPEED_KMH
-			if (nmeaSentence->Mwv.WindSpeedUnits == "N") {
-				// Knots (Nautical Miles per Hour)
-				apparentWindSpeed = fromUsrWindSpeed_Plugin(nmeaSentence->Mwv.WindSpeed, 0);
-			}
-			else if (nmeaSentence->Mwv.WindSpeedUnits == "M") {
-				// Metres per second
-				apparentWindSpeed = fromUsrWindSpeed_Plugin(nmeaSentence->Mwv.WindSpeed, 1);
-			}
-			else if (nmeaSentence->Mwv.WindSpeedUnits == "S") {
-				// Statute Miles per hour
-				apparentWindSpeed = fromUsrWindSpeed_Plugin(nmeaSentence->Mwv.WindSpeed, 2);
-			}
-			else if (nmeaSentence->Mwv.WindSpeedUnits == "K") {
-				// Kilometres per hour
-				apparentWindSpeed = fromUsrWindSpeed_Plugin(nmeaSentence->Mwv.WindSpeed, 2);
-			}
+// Handle NMEA 0183 Wind Speed
+void DemoPlugin::ParseMWV(ObservedEvt ev) {
+	if (g_Wind == ConversionType::NMEA2000) {
+		NMEA0183Id id_183_mwv("MWV");
+		NMEA0183 parserNMEA0183;
+		wxString sentence = GetN0183Payload(id_183_mwv, ev);
+		parserNMEA0183 << sentence;
 
-			// For the time being, we'll just log the data
-			// In later Chapters we'll use this data to draw on the canvas
-			wxLogMessage("Demo Plugin, Wind Direction: %0.2f, Wind Speed (knots) %0.2f",
-				apparentWindAngle, apparentWindSpeed);
+		if (parserNMEA0183.Parse()) {
+			double windSpeed = parserNMEA0183.Mwv.WindSpeed;
+			double windAngle = parserNMEA0183.Mwv.WindAngle;
+			wxString units = parserNMEA0183.Mwv.WindSpeedUnits;
+			wxString reference = parserNMEA0183.Mwv.Reference;
+
+
+			// Only interested in apparent wind angle rather than true wind angle
+			if (reference == "R") {
+				windAngle = parserNMEA0183.Mwv.WindAngle * M_PI / 180;
+				// Using the helper API fromUsrWindSpeed_Plugin to convert the speed into knots
+				// WSPEED_KTS = 0, WSPEED_MS, WSPEED_MPH, WSPEED_KMH
+				if (units == "N") {
+					// Knots (Nautical Miles per Hour)
+					windSpeed = toUsrWindSpeed_Plugin(windSpeed, 1);
+				}
+				else if (units == "M") {
+					// Metres per second, No conversion required
+				}
+				else if (units == "S") {
+					// Statute Miles per hour
+					windSpeed = windSpeed * 0.44704;
+				}
+				else if (units == "K") {
+					// Kilometres per hour
+					windSpeed = windSpeed / 3.6;
+				}
+				auto payload = GeneratePGN130306(windSpeed, windAngle);
+				SendNMEA2000(g_nmea2000Driver.ToStdString(), 255, 4, 130306, payload);
+			}
 		}
 	}
 }
 
-// Parse NMEA 0183 Speed through Water sentence obtained from observer/listener model
-void DemoPlugin::HandleVHW(ObservedEvt ev) {
+void DemoPlugin::ParseDPT(ObservedEvt ev) {
+	if (g_Depth == ConversionType::NMEA2000) {
+		NMEA0183Id id_183_dpt("DPT");
+		NMEA0183 parserNMEA0183;
+		wxString sentence = GetN0183Payload(id_183_dpt, ev);
+		parserNMEA0183 << sentence;
 
-	NMEA0183Id id_183_vhw("VHW");
-	NMEA0183 parserNMEA0183;
-	wxString sentence = GetN0183Payload(id_183_vhw, ev);
-	parserNMEA0183 << sentence;
-
-	if (parserNMEA0183.Parse()) {
-		// Persist the Speed Through Water value, this will be used
-		// in subsequent chapters.
-		boatSpeed = parserNMEA0183.Vhw.Knots;
+		if (parserNMEA0183.Parse()) {
+			auto depth = parserNMEA0183.Dpt.DepthMeters;
+			auto offset = parserNMEA0183.Dpt.OffsetFromTransducerMeters;
+			auto payload = GeneratePGN128267(depth, offset);
+			SendNMEA2000(g_nmea2000Driver.ToStdString(), 255, 4, 128267, payload);
+		}
 	}
 }
 
-// Given heading, boat speed and apparent wind angle and speed, calculate true wind angle and direction
-void DemoPlugin::CalculateTrueWind(void) {
+void DemoPlugin::ParseGLL(ObservedEvt ev) {
+	if (g_Position == ConversionType::NMEA2000) {
+		NMEA0183Id id_183_gll("GLL");
+		NMEA0183 parserNMEA0183;
+		wxString sentence = GetN0183Payload(id_183_gll, ev);
+		parserNMEA0183 << sentence;
 
-	if (apparentWindAngle < 180.0f) {
-		trueWindAngle = 90.0f - (180.0f / M_PI * atan((apparentWindSpeed * cos(apparentWindAngle * M_PI / 180.0f) - boatSpeed) / (apparentWindSpeed * sin(apparentWindAngle * M_PI / 180.0f))));
+		if (parserNMEA0183.Parse()) {
+			double latitude = parserNMEA0183.Gll.Position.Latitude.Latitude;
+			if (parserNMEA0183.Gll.Position.Latitude.Northing == NORTHSOUTH::South) {
+				latitude = -latitude;
+			}
+			double longitude = parserNMEA0183.Gll.Position.Longitude.Longitude;
+			if (parserNMEA0183.Gll.Position.Longitude.Easting == EASTWEST::West) {
+				latitude = -latitude;
+			}
+			// BUG BUG Is the library OK ??
+			auto payload = GeneratePGN129025(latitude / 100.0, longitude / 100.0);
+			SendNMEA2000(g_nmea2000Driver.ToStdString(), 255, 4, 129025, payload);
+		}
 	}
-	else if (apparentWindAngle > 180.0f) {
-		trueWindAngle = 360.0f - (90.0f - (180.0f / M_PI * atan((apparentWindSpeed * cos((180.0f - (apparentWindAngle - 180.0f)) * M_PI / 180.0f) - boatSpeed) / (apparentWindSpeed * sin((180.0f - (apparentWindAngle - 180.0f)) * M_PI / 180.0f)))));
-	}
-	else {
-		trueWindAngle = 180.0f;
-	}
-	trueWindSpeed = sqrt(pow((apparentWindSpeed * cos(apparentWindAngle * M_PI / 180.0f)) - boatSpeed, 2) + pow(apparentWindSpeed * sin(apparentWindAngle * M_PI / 180.0f), 2));
-
-	trueWindDirection = fmod(trueWindAngle + trueHeading, 360.0f);
 }
 
 
-// Generate NMEA 0183 MWV Sentence for True Wind Angle, using OpenCPN support library 
-wxString DemoPlugin::FormatTrueWindSentence(void) {
+// Generate NMEA 0183 MWV Sentence 
+wxString DemoPlugin::GenerateMWV(double windAngle, double windSpeed) {
 	NMEA0183 NMEA0183parser;
 	SENTENCE NMEASentence;
 
-	NMEA0183parser.TalkerID = "II";
 	NMEA0183parser.Mwv.Empty();
-	NMEA0183parser.Mwv.WindAngle = trueWindAngle;
-	NMEA0183parser.Mwv.Reference = "T";
-	NMEA0183parser.Mwv.WindSpeed = trueWindSpeed;
+	NMEA0183parser.TalkerID = "II";
+	NMEA0183parser.Mwv.WindAngle = windAngle;
+	NMEA0183parser.Mwv.Reference = "R";
+	NMEA0183parser.Mwv.WindSpeed = windSpeed;
 	NMEA0183parser.Mwv.WindSpeedUnits = "N";
 	NMEA0183parser.Mwv.IsDataValid = NTrue;
 
@@ -462,24 +357,48 @@ wxString DemoPlugin::FormatTrueWindSentence(void) {
 	return NMEASentence.Sentence;
 }
 
-// Helper function to find required driver handles
-std::string DemoPlugin::FindOutboundConnection(const std::string& connectionType) {
-	// Iterate through all of the OpenCPN connections
-	for (const auto& driver : GetActiveDrivers()) {
-		const auto& attributes = GetAttributes(driver);
+// Generate NMEA 0183 Depth Sentence 
+wxString DemoPlugin::GenerateDPT(double depth, double offset) {
+	NMEA0183 NMEA0183parser;
+	SENTENCE NMEASentence;
 
-		auto protocolIterator = attributes.find("protocol");
-		auto directionIterator = attributes.find("ioDirection");
+	NMEA0183parser.Dpt.Empty();
+	NMEA0183parser.TalkerID = "II";
+	NMEA0183parser.Dpt.DepthMeters = depth;
+	NMEA0183parser.Dpt.OffsetFromTransducerMeters = offset;
+	NMEA0183parser.Dpt.Write(NMEASentence);
+	return NMEASentence.Sentence;
+}
 
-		if (protocolIterator != attributes.end() && directionIterator != attributes.end()) {
-			// Found a connection matching the required connection and io direction
-			if ((connectionType == protocolIterator->second) && ((directionIterator->second == "OUT")
-				|| (directionIterator->second == "IN/OUT"))) {
-				return driver;
-			}
-		}
-	}
-	return {};
+wxString DemoPlugin::GenerateGLL(double latitude, double longitude) {
+	NMEA0183 NMEA0183parser;
+	SENTENCE NMEASentence;
+
+	NMEA0183parser.Gll.Empty();
+	NMEA0183parser.TalkerID = "II";
+	NMEA0183parser.Gll.Position.Latitude.Latitude = std::fabs(latitude);
+	latitude < 0 ? NMEA0183parser.Gll.Position.Latitude.Northing = NORTHSOUTH::South :
+		NMEA0183parser.Gll.Position.Latitude.Northing = NORTHSOUTH::North;
+	NMEA0183parser.Gll.Position.Longitude.Longitude = std::fabs(longitude);
+	longitude < 0 ? NMEA0183parser.Gll.Position.Longitude.Easting = EASTWEST::West :
+		NMEA0183parser.Gll.Position.Longitude.Easting = EASTWEST::East;
+	NMEA0183parser.Gll.IsDataValid = NTrue;
+	NMEA0183parser.Gll.Write(NMEASentence);
+
+	return NMEASentence.Sentence;
+
+}
+
+// Generate Speed Through Water
+wxString DemoPlugin::GenerateVHW(double speed) {
+	NMEA0183 NMEA0183parser;
+	SENTENCE NMEASentence;
+
+	NMEA0183parser.Vhw.Empty();
+	NMEA0183parser.TalkerID = "II";
+	NMEA0183parser.Vhw.Knots = speed;
+	NMEA0183parser.Vhw.Write(NMEASentence);
+	return NMEASentence.Sentence;
 }
 
 // Send NMEA 0183 Sentence using observer/listener model
@@ -512,42 +431,102 @@ void DemoPlugin::SendNMEA0183(const std::string& driverHandle, const std::string
 // checksum (1 byte)	BB Ensures sum of characters % 256 equals 0
 // However the bundled NMEA 2000 parsers handle the "unpacking"
 
+
 // Parse NMEA 2000 PGN 128269 message (Boat Speed)
 void DemoPlugin::HandleN2K_128259(ObservedEvt ev) {
-	NMEA2000Id id_128259(128259);
-	std::vector<uint8_t> payload = GetN2000Payload(id_128259, ev);
-	unsigned char sequenceId;
-	double boatSpeedWaterReferenced;
-	double boatSpeedGroundReferenced;
-	tN2kSpeedWaterReferenceType waterReferenceType;
+	if (g_Speed == ConversionType::NMEA0183) {
+		NMEA2000Id id_128259(128259);
+		std::vector<uint8_t> payload = GetN2000Payload(id_128259, ev);
+		unsigned char sequenceId;
+		double boatSpeedWaterReferenced;
+		double boatSpeedGroundReferenced;
+		tN2kSpeedWaterReferenceType waterReferenceType;
 
-	if (ParseN2kPGN128259(payload, sequenceId, boatSpeedWaterReferenced, boatSpeedGroundReferenced, waterReferenceType)) {
-		// Convert from NMEA 2000 SI units which are m/s to OpenCPN's core units
-		boatSpeed = fromUsrSpeed_Plugin(boatSpeedWaterReferenced, 3);
+		if (ParseN2kPGN128259(payload, sequenceId, boatSpeedWaterReferenced, boatSpeedGroundReferenced, waterReferenceType)) {
+			// Convert from NMEA 2000 SI units which are m/s to OpenCPN's core units
+			wxString sentence = GenerateVHW(fromUsrSpeed_Plugin(boatSpeedWaterReferenced, 3));
+			SendNMEA0183(g_nmea0183Driver.ToStdString(), sentence.ToStdString());
+		}
 	}
 }
 
 // Parse NMEA 2000 PGN 130306 message (Wind Speed & Angle)
 void DemoPlugin::HandleN2K_130306(ObservedEvt ev) {
-	NMEA2000Id id_130306(130306);
-	std::vector<uint8_t> payload = GetN2000Payload(id_130306, ev);
-	unsigned char sequenceId;
-	double windSpeed;
-	double windAngle;
-	tN2kWindReference windReferenceType;
+	if (g_Wind == ConversionType::NMEA0183) {
+		NMEA2000Id id_130306(130306);
+		std::vector<uint8_t> payload = GetN2000Payload(id_130306, ev);
+		unsigned char sequenceId;
+		double windSpeed;
+		double windAngle;
+		tN2kWindReference windReferenceType;
 
-	if (ParseN2kPGN130306(payload, sequenceId, windSpeed, windAngle, windReferenceType)) {
-		// Convert from SI Units, m/s and radians to OpenCPN's core units
-		apparentWindSpeed = fromUsrSpeed_Plugin(windSpeed, 3);
-		apparentWindAngle = windAngle * 180 / M_PI;
+		if (ParseN2kPGN130306(payload, sequenceId, windSpeed, windAngle, windReferenceType)) {
+			// Convert from SI Units, m/s and radians to Knots and Degrees
+			wxString sentence = GenerateMWV(windAngle * 180 / M_PI, fromUsrSpeed_Plugin(windSpeed, 3));
+			SendNMEA0183(g_nmea0183Driver.ToStdString(), sentence.ToStdString());
+		}
 	}
 }
 
-// Generate NMEA 2000 PGN 130306 message with True Wind Angle
-std::vector<uint8_t> DemoPlugin::FormatTrueWindMessage(void) {
+// Parse NMEA 2000 PGN 128267 (Depth)
+void DemoPlugin::HandleN2K_128267(ObservedEvt ev) {
+	if (g_Depth == ConversionType::NMEA0183) {
+		NMEA2000Id id_128267(128267);
+		std::vector<uint8_t> payload = GetN2000Payload(id_128267, ev);
+		unsigned char sid;
+		double depthBelowTransducer;
+		double offset;
+		double range;
+		if (ParseN2kPGN128267(payload, sid, depthBelowTransducer, offset, range)) {
+			wxString sentence = GenerateDPT(depthBelowTransducer, offset);
+			SendNMEA0183(g_nmea0183Driver.ToStdString(), sentence.ToStdString());
+		}
+	}
+}
+
+// Parse NMEA 2000 PGN 129025 (Position)
+void DemoPlugin::HandleN2K_129025(ObservedEvt ev) {
+	if (g_Position == ConversionType::NMEA0183) {
+		NMEA2000Id id_129025(129025);
+		std::vector<uint8_t> payload = GetN2000Payload(id_129025, ev);
+		double latitude;
+		double longitude;
+		if (ParseN2kPGN129025(payload, latitude, longitude)) {
+			wxString sentence = GenerateGLL(latitude, longitude);
+			SendNMEA0183(g_nmea0183Driver.ToStdString(), sentence.ToStdString());
+		}
+	}
+}
+
+// Generate NMEA 2000 PGN 130306 message
+std::vector<uint8_t> DemoPlugin::GeneratePGN130306(double windSpeed, double windAngle) {
 	tN2kMsg msg130306;
-	SetN2kWindSpeed(msg130306, 1, trueWindSpeed, trueWindAngle, tN2kWindReference::N2kWind_True_boat);
+	SetN2kWindSpeed(msg130306, 1, windSpeed, windAngle, tN2kWindReference::N2kWind_Apparent);
 	std::vector<uint8_t> data(msg130306.Data, msg130306.Data + msg130306.DataLen);
+	return data;
+}
+
+// Generate NMEA 2000 PGN 128259 message
+std::vector<uint8_t> DemoPlugin::GeneratePGN128259(double waterSpeed) {
+	tN2kMsg msg;
+	SetN2kBoatSpeed(msg, 1, waterSpeed);
+	std::vector<uint8_t> data(msg.Data, msg.Data + msg.DataLen);
+	return data;
+}
+
+// Generate NMEA 2000 PGN 128267 message
+std::vector<uint8_t> DemoPlugin::GeneratePGN128267(double depth, double offset) {
+	tN2kMsg msg;
+	SetN2kPGN128267(msg,1,depth, offset);
+	std::vector<uint8_t> data(msg.Data, msg.Data + msg.DataLen);
+	return data;
+}
+
+// Generate NMEA 2000 PGN 129025 message
+std::vector<uint8_t> DemoPlugin::GeneratePGN129025(double latitude, double longitude) {
+	tN2kMsg msg;
+	SetN2kPGN129025(msg, latitude, longitude);
+	std::vector<uint8_t> data(msg.Data, msg.Data + msg.DataLen);
 	return data;
 }
 
@@ -564,19 +543,25 @@ void DemoPlugin::SendNMEA2000(const std::string& driverHandle, const unsigned ch
 void DemoPlugin::LoadSettings() {
 	wxFileConfig* configSettings = GetOCPNConfigObject();
 	if (configSettings) {
-		configSettings->SetPath("/PlugIns/DemoPlugin");
-		configSettings->Read("A_Boolean_Value", &g_someBooleanValue, false);
-		configSettings->Read("An_Integer_Value", &g_someIntegerValue, 0);
-		configSettings->Read("A_String_Value", &g_someStringValue, wxEmptyString);
+		configSettings->SetPath("/PlugIns/GatewayPlugin");
+		configSettings->Read("NMEA2000", &g_nmea2000Driver, wxEmptyString);
+		configSettings->Read("NMEA0183", &g_nmea0183Driver, wxEmptyString);
+		g_Speed = static_cast<ConversionType>(configSettings->ReadLong("Speed", 0));
+		g_Depth = static_cast<ConversionType>(configSettings->ReadLong("Depth", 0));
+		g_Wind = static_cast<ConversionType>(configSettings->ReadLong("Wind", 0));
+		g_Position = static_cast<ConversionType>(configSettings->ReadLong("Position", 0));
 	}
 }
 
 void DemoPlugin::SaveSettings() {
 	wxFileConfig* configSettings = GetOCPNConfigObject();
 	if (configSettings) {
-		configSettings->SetPath("/PlugIns/DemoPlugin");
-		configSettings->Write("A_Boolean_Value", g_someBooleanValue);
-		configSettings->Write("An_Integer_Value", g_someIntegerValue);
-		configSettings->Write("A_String_Value", g_someStringValue);
+		configSettings->SetPath("/PlugIns/GatewayPlugin");
+		configSettings->Write("NMEA2000", g_nmea2000Driver);
+		configSettings->Write("NMEA0183", g_nmea0183Driver);
+		configSettings->Write("Wind", static_cast<int>(g_Wind));
+		configSettings->Write("Speed", static_cast<int>(g_Speed));
+		configSettings->Write("Depth", static_cast<int>(g_Depth));
+		configSettings->Write("Position", static_cast<int>(g_Position));
 	}
 }

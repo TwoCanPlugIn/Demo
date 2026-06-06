@@ -192,3 +192,112 @@ DemoToolboxBase::DemoToolboxBase( wxWindow* parent, wxWindowID id, const wxPoint
 DemoToolboxBase::~DemoToolboxBase()
 {
 }
+
+DemoGatewayUIBase::DemoGatewayUIBase( wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style ) : wxDialog( parent, id, title, pos, size, style )
+{
+	this->SetSizeHints( wxDefaultSize, wxDefaultSize );
+
+	wxBoxSizer* sizerDialog;
+	sizerDialog = new wxBoxSizer( wxVERTICAL );
+
+	wxStaticBoxSizer* sizerNetwork;
+	sizerNetwork = new wxStaticBoxSizer( new wxStaticBox( this, wxID_ANY, _("Network Interfaces") ), wxHORIZONTAL );
+
+	wxBoxSizer* sizerInterfaceA;
+	sizerInterfaceA = new wxBoxSizer( wxVERTICAL );
+
+	labelInterfaceA = new wxStaticText( sizerNetwork->GetStaticBox(), wxID_ANY, _("NMEA 0183"), wxDefaultPosition, wxDefaultSize, 0 );
+	labelInterfaceA->Wrap( -1 );
+	sizerInterfaceA->Add( labelInterfaceA, 0, wxALL, 5 );
+
+	wxArrayString choiceNMEA0183Choices;
+	choiceNMEA0183 = new wxChoice( sizerNetwork->GetStaticBox(), wxID_ANY, wxDefaultPosition, wxDefaultSize, choiceNMEA0183Choices, 0 );
+	choiceNMEA0183->SetSelection( 0 );
+	sizerInterfaceA->Add( choiceNMEA0183, 1, wxALL|wxEXPAND, 5 );
+
+
+	sizerNetwork->Add( sizerInterfaceA, 1, wxEXPAND, 5 );
+
+	wxBoxSizer* sizerInterfaceB;
+	sizerInterfaceB = new wxBoxSizer( wxVERTICAL );
+
+	labelInterfaceB = new wxStaticText( sizerNetwork->GetStaticBox(), wxID_ANY, _("NMEA 2000"), wxDefaultPosition, wxDefaultSize, 0 );
+	labelInterfaceB->Wrap( -1 );
+	sizerInterfaceB->Add( labelInterfaceB, 0, wxALL, 5 );
+
+	wxArrayString choiceNMEA2000Choices;
+	choiceNMEA2000 = new wxChoice( sizerNetwork->GetStaticBox(), wxID_ANY, wxDefaultPosition, wxDefaultSize, choiceNMEA2000Choices, 0 );
+	choiceNMEA2000->SetSelection( 0 );
+	sizerInterfaceB->Add( choiceNMEA2000, 1, wxALL|wxEXPAND, 5 );
+
+
+	sizerNetwork->Add( sizerInterfaceB, 1, wxEXPAND, 5 );
+
+
+	sizerDialog->Add( sizerNetwork, 0, wxEXPAND, 5 );
+
+	wxStaticBoxSizer* sizerMessages;
+	sizerMessages = new wxStaticBoxSizer( new wxStaticBox( this, wxID_ANY, _("Conversions") ), wxVERTICAL );
+
+	gridPGN = new wxGrid( sizerMessages->GetStaticBox(), wxID_ANY, wxDefaultPosition, wxDefaultSize, 0 );
+
+	// Grid
+	gridPGN->CreateGrid( 1, 3 );
+	gridPGN->EnableEditing( true );
+	gridPGN->EnableGridLines( true );
+	gridPGN->EnableDragGridSize( false );
+	gridPGN->SetMargins( 0, 0 );
+
+	// Columns
+	gridPGN->EnableDragColMove( false );
+	gridPGN->EnableDragColSize( true );
+	gridPGN->SetColLabelAlignment( wxALIGN_CENTER, wxALIGN_CENTER );
+
+	// Rows
+	gridPGN->EnableDragRowSize( true );
+	gridPGN->SetRowLabelAlignment( wxALIGN_CENTER, wxALIGN_CENTER );
+
+	// Label Appearance
+
+	// Cell Defaults
+	gridPGN->SetDefaultCellAlignment( wxALIGN_LEFT, wxALIGN_TOP );
+	sizerMessages->Add( gridPGN, 0, wxALL|wxEXPAND, 5 );
+
+
+	sizerDialog->Add( sizerMessages, 1, wxEXPAND, 5 );
+
+	wxBoxSizer* sizerButtons;
+	sizerButtons = new wxBoxSizer( wxHORIZONTAL );
+
+
+	sizerButtons->Add( 0, 0, 1, wxEXPAND, 5 );
+
+	buttonOK = new wxButton( this, wxID_ANY, _("OK"), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerButtons->Add( buttonOK, 0, wxALL, 5 );
+
+	buttonCancel = new wxButton( this, wxID_ANY, _("Cancel"), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerButtons->Add( buttonCancel, 0, wxALL, 5 );
+
+
+	sizerDialog->Add( sizerButtons, 0, wxEXPAND, 5 );
+
+
+	this->SetSizer( sizerDialog );
+	this->Layout();
+
+	this->Centre( wxBOTH );
+
+	// Connect Events
+	this->Connect( wxEVT_INIT_DIALOG, wxInitDialogEventHandler( DemoGatewayUIBase::OnInit ) );
+	choiceNMEA0183->Connect( wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler( DemoGatewayUIBase::OnInterfaceAChanged ), NULL, this );
+	choiceNMEA2000->Connect( wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler( DemoGatewayUIBase::OnInterfaceBChanged ), NULL, this );
+	gridPGN->Connect( wxEVT_GRID_CELL_CHANGED, wxGridEventHandler( DemoGatewayUIBase::OnCellChanged ), NULL, this );
+	gridPGN->Connect(wxEVT_GRID_CELL_CHANGING, wxGridEventHandler(DemoGatewayUIBase::OnCellChanging), NULL, this);
+	gridPGN->Connect( wxEVT_GRID_LABEL_RIGHT_CLICK, wxGridEventHandler( DemoGatewayUIBase::OnLabelClicked ), NULL, this );
+	buttonOK->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DemoGatewayUIBase::OnOK ), NULL, this );
+	buttonCancel->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DemoGatewayUIBase::OnCancel ), NULL, this );
+}
+
+DemoGatewayUIBase::~DemoGatewayUIBase()
+{
+}

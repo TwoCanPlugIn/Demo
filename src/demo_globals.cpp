@@ -16,11 +16,10 @@
 // along with the Demo plugin for OpenCPN. If not, see <https://www.gnu.org/licenses/>.
 //
 
-//
-// Project: Demo Plugin
-// Description: Demonstrate the use of the OpenCPN plugin API's
+// Project: Gateway Plugin
+// Description: Derived from Demo plugin, a simple bi-directional NMEA 0183 <-> NMEA 2000 gateway
 // Owner: twocanplugin@hotmail.com
-// Date: 10/01/2026
+// Date: 17/04/2026
 // Version History: 
 // 1.0 Initial Release
 
@@ -31,7 +30,26 @@
 // Plugin icon
 wxBitmap g_pluginBitmap;
 
-// Some fictitious plugin settings
-bool g_someBooleanValue = false;
-int g_someIntegerValue = 0;
-wxString g_someStringValue = wxEmptyString;
+// Persist the NMEA 0183 and NMEA 2000 network connections
+wxString g_nmea0183Driver;
+wxString g_nmea2000Driver;
+
+// Settings for bi-directional NMEA 0183 & NMEA 2000 conversions
+ConversionType g_Depth = ConversionType::None;
+ConversionType g_Wind = ConversionType::None;
+ConversionType g_Speed = ConversionType::None;
+ConversionType g_Position = ConversionType::None;
+
+// NMEA 2000 PGN's and NMEA 0183 Sentences and descriptions to populate the grid
+std::unordered_map<int, std::string> supportedConversions = { 
+    {130306, "MWV (Wind)"},
+	{128267, "DPT (Depth)"},
+    {128259, "VHW (Speed)"},
+    {129025, "GLL (Position)"} };
+
+// Map the PGN's to their respective global variables
+std::unordered_map<int, ConversionType*> variableBindings = {
+    {130306,  &g_Wind},
+    {128267, &g_Depth},
+    {128259, &g_Speed},
+    {129025, &g_Position} };

@@ -29,6 +29,9 @@ WX_DEFINE_ARRAY_PTR( wxWizardPageSimple*, WizardPages );
 #include <wx/button.h>
 #include <wx/dialog.h>
 #include <wx/panel.h>
+#include <wx/choice.h>
+#include <wx/statbox.h>
+#include <wx/grid.h>
 
 ///////////////////////////////////////////////////////////////////////////
 
@@ -124,6 +127,41 @@ class DemoToolboxBase : public wxPanel
 		DemoToolboxBase( wxWindow* parent, wxWindowID id = wxID_ANY, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( 500,300 ), long style = wxTAB_TRAVERSAL, const wxString& name = wxEmptyString );
 
 		~DemoToolboxBase();
+
+};
+
+///////////////////////////////////////////////////////////////////////////////
+/// Class DemoGatewayUIBase
+///////////////////////////////////////////////////////////////////////////////
+class DemoGatewayUIBase : public wxDialog
+{
+	private:
+
+	protected:
+		wxStaticText* labelInterfaceA;
+		wxChoice* choiceNMEA0183;
+		wxStaticText* labelInterfaceB;
+		wxChoice* choiceNMEA2000;
+		wxGrid* gridPGN;
+		wxButton* buttonOK;
+		wxButton* buttonCancel;
+
+		// Virtual event handlers, override them in your derived class
+		virtual void OnInit( wxInitDialogEvent& event ) { event.Skip(); }
+		virtual void OnInterfaceAChanged( wxCommandEvent& event ) { event.Skip(); }
+		virtual void OnInterfaceBChanged( wxCommandEvent& event ) { event.Skip(); }
+		virtual void OnCellChanged( wxGridEvent& event ) { event.Skip(); }
+		virtual void OnCellChanging(wxGridEvent& event) { event.Skip(); }
+		virtual void OnLabelClicked( wxGridEvent& event ) { event.Skip(); }
+		virtual void OnOK( wxCommandEvent& event ) { event.Skip(); }
+		virtual void OnCancel( wxCommandEvent& event ) { event.Skip(); }
+
+
+	public:
+
+		DemoGatewayUIBase( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Gateway Settings"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( 457,475 ), long style = wxDEFAULT_DIALOG_STYLE );
+
+		~DemoGatewayUIBase();
 
 };
 

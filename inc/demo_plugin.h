@@ -66,78 +66,55 @@ public:
 	wxBitmap* GetPlugInBitmap() override;
 	void SetDefaults(void) override;
 	void SetupToolboxPanel(int page_sel, wxNotebook* pnotebook) override;
-	void OnCloseToolboxPanel(int page_sel, int ok_apply_cancel) override;
-	void OnSetupOptions(void) override;
 	void ShowPreferencesDialog(wxWindow* parent) override;
-	void OnContextMenuItemCallback(int id) override;
-	void OnContextMenuItemCallbackExt(int id, std::string obj_ident, std::string obj_type, double lat, double lon) override;
-	void OnToolbarToolCallback(int id) override;
-	void SetPositionFixEx(PlugIn_Position_Fix_Ex& pfix) override;
-	void SetNMEASentence(wxString& sentence) override;
 	void LateInit(void) override;
 
 private:
 	void LoadSettings();
 	void SaveSettings();
 
-	// Context Menu Id's
-	int demoContextMenuId;
-	int demoAISContextMenuId;
-	
-	// Toolbar button Id & state
-	int demoToolbarId;
-	bool isToolbarActive;
+	// Encode NMEA 0183 Sentences
+	wxString GenerateMWV(double windAngle, double WindSpeed);
 
-	// Current position and heading
-	double currentLatitude;
-	double currentLongitude;
-	double trueHeading;
+	wxString GenerateDPT(double depth, double offset);
 
-	// Wind angle and speed
-	double apparentWindAngle;
-	double apparentWindSpeed;
-	double trueWindAngle;
-	double trueWindSpeed;
-	double trueWindDirection;
+	wxString GenerateGLL(double latitude, double longitude);
 
-	// Speed Through Water
-	double boatSpeed;
+	wxString GenerateVHW(double speed);
 
-	// Calculate True Wind
-	void CalculateTrueWind(void);
+	// Encode NMEA 2000 PGN's
+	std::vector<uint8_t> GeneratePGN130306(double windSpeed, double windAngle);
 
-	// Generate NMEA 0183 MWV Sentence for True Wind Angle
-	wxString FormatTrueWindSentence(void);
+	std::vector<uint8_t> GeneratePGN128259(double waterSpeed);
 
-	// Generate NMEA 2000 PGN 130306 message for True Wind Angle
-	std::vector<uint8_t> FormatTrueWindMessage(void);
+	std::vector<uint8_t> GeneratePGN128267(double depth, double offset);
 
-	// Function to parse NMEA0183 MWV sentences
-	void ParseWind(NMEA0183* nmea0183Sentence);
-
-	// Helper function to find a required connection
-	std::string FindOutboundConnection(const std::string& connectionType);
+	std::vector<uint8_t> GeneratePGN129025(double latitude, double longitude);
 
 	// Transmit NMEA 0183 data using observer/listener model
-	// An interface for a NMEA 0183 connection
-	DriverHandle nmea0183Driver;
 	void SendNMEA0183(const std::string& driverHandle, const std::string& sentence);
 
 	// Transmit NMEA 2000 data using observer/listener model
-	// An interface for a NMEA 2000 connection
-	DriverHandle nmea2000Driver;
 	void SendNMEA2000(const std::string& driverHandle, const unsigned char& destination, 
 		const unsigned char& priority,	const unsigned int pgn,	std::vector<uint8_t>& payload);
 
 	// New Observer Listener model handlers
 	
-	// Used instead of SetPositionFix callback API
-	void HandleNavData(ObservedEvt ev);
-	std::shared_ptr<ObservableListener> listener_nav;
-
 	// NMEA 0183 VHW Boat speed
-	void HandleVHW(ObservedEvt ev);
+	void ParseVHW(ObservedEvt ev);
 	std::shared_ptr<ObservableListener> listener_vhw;
+
+	// NMEA 0183 MWV Wind
+	void ParseMWV(ObservedEvt ev);
+	std::shared_ptr<ObservableListener> listener_mwv;
+
+	// NMEA 0183 DPT Depth
+	void ParseDPT(ObservedEvt ev);
+	std::shared_ptr<ObservableListener> listener_dpt;
+
+	// NMEA 0183 GLL Position
+	void ParseGLL(ObservedEvt ev);
+	std::shared_ptr<ObservableListener> listener_gll;
 
 	// NMEA 2000 Boat speed
 	void HandleN2K_128259(ObservedEvt ev);
@@ -147,7 +124,14 @@ private:
 	void HandleN2K_130306(ObservedEvt ev);
 	std::shared_ptr<ObservableListener> listener_130306;
 
+	// NMEA 2000 Depth
+	void HandleN2K_128267(ObservedEvt ev);
+	std::shared_ptr<ObservableListener> listener_128267;
+
+	// NMEA 2000 Position (Rapid Update)
+	void HandleN2K_129025(ObservedEvt ev);
+	std::shared_ptr<ObservableListener> listener_129025;
+
 };
 
 #endif 
-

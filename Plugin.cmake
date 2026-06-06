@@ -13,16 +13,16 @@
 # -------- Options ----------
 
 set(OCPN_TEST_REPO
-    "opencpn/demo-alpha"
+    "opencpn/demoplugin-alpha"
     CACHE STRING "Default repository for untagged builds"
 )
 set(OCPN_BETA_REPO
-    "opencpn/demo-beta"
+    "opencpn/demoplugin-beta"
     CACHE STRING
     "Default repository for tagged builds matching 'beta'"
 )
 set(OCPN_RELEASE_REPO
-    "opencpn/demo-prod"
+    "opencpn/demoplugin-prod"
     CACHE STRING
     "Default repository for tagged builds not matching 'beta'"
 )
@@ -50,18 +50,14 @@ include_directories(${CMAKE_SOURCE_DIR}/inc)
 set(SRC
     ${CMAKE_SOURCE_DIR}/src/demo_plugin.cpp
     ${CMAKE_SOURCE_DIR}/src/demo_globals.cpp
-    ${CMAKE_SOURCE_DIR}/src/demo_wizard.cpp
-    ${CMAKE_SOURCE_DIR}/src/demo_toolbox.cpp
-     ${CMAKE_SOURCE_DIR}/src/demo_settings.cpp
     ${CMAKE_SOURCE_DIR}/src/demo_ui_base.cpp
+    ${CMAKE_SOURCE_DIR}/src/demo_gateway_ui.cpp
 )
 set (INC
     ${CMAKE_SOURCE_DIR}/inc/demo_plugin.h
     ${CMAKE_SOURCE_DIR}/inc/demo_globals.h
-    ${CMAKE_SOURCE_DIR}/inc/demo_wizard.h
-    ${CMAKE_SOURCE_DIR}/inc/demo_toolbox.h
-    ${CMAKE_SOURCE_DIR}/inc/demo_settings.h
     ${CMAKE_SOURCE_DIR}/inc/demo_ui_base.h
+    ${CMAKE_SOURCE_DIR}/inc/demo_gateway_ui.h
 )
 
 set (SOURCE_FILES ${SRC} ${INC})

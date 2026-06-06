@@ -1,4 +1,3 @@
-
 // Copyright(C) 2026 by Steven Adler
 //
 // This file is part of Demo plugin for OpenCPN.
@@ -26,15 +25,29 @@
 #include "wx/wx.h"
 #endif
 
-// Globally accessible variables used by the plugin, dialogs etc.
+// Whether a NMEA 0183 sentence or a NMEA 2000 message are converted
+enum class ConversionType {
+    None,
+    NMEA0183,
+    NMEA2000
+};
 
+// Globally accessible variables used by the plugin, dialogs etc.
 extern wxBitmap g_pluginBitmap;
-extern bool g_someBooleanValue;
-extern int g_someIntegerValue;
-extern wxString g_someStringValue;
+extern ConversionType g_Depth;
+extern ConversionType g_Wind;
+extern ConversionType g_Speed;
+extern ConversionType g_Position;
 
 // Id's used for wxWidgets thingies
 constexpr int k_FirstContextMenu = wxID_HIGHEST + 1;
 constexpr int k_SecondContextMenu = wxID_HIGHEST + 2;
+
+// Network Connections
+extern wxString g_nmea0183Driver;
+extern wxString g_nmea2000Driver;
+
+extern std::unordered_map<int, std::string> supportedConversions;
+extern std::unordered_map<int, ConversionType*> variableBindings;
 
 #endif
