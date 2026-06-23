@@ -101,6 +101,7 @@ public:
 	bool KeyboardEventHook(wxKeyEvent& event) override;
 	void UpdateAuiStatus(void) override;
 	void SetColorScheme(PI_ColorScheme cs) override;
+	wxArrayString GetDynamicChartClassNameArray() override;
 
 private:
 	void LoadSettings();
