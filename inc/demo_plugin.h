@@ -86,10 +86,15 @@ private:
 	void ExportWaypoints(const wxArrayString& guids);
 	wxString ExportToSignalK(std::string& guid);
 	bool PostToSignalK(wxString& url, wxString& jsonData);
+	bool ExportToRTZ(std::string& guid);
+	bool ExportToS421(std::string& guid);
+
 	
 	// Context Menu Id's
 	int exportWaypointMenuId;
 	int exportSignalKMenuId;
+	int exportRTZMenuId;
+	int exportS421MenuId;
 	
 	// Toolbar button Id & state
 	int exportWaypointsToolbarId;

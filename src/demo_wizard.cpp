@@ -38,8 +38,13 @@ void DemoWizard::OnInit(wxInitDialogEvent& event) {
 	checkBoxBoolean->SetValue(false);
 	sliderInteger->SetValue(50);
 	textString->SetValue("Demo Plugin");
+
+	// For this demo, we need a vessel name to export to RTZ and S421
+	labelString->SetLabel("Vessel Name");
+
 	Layout();
 	Fit();
+
 }
 
 void DemoWizard::OnCancel(wxWizardEvent& event) {

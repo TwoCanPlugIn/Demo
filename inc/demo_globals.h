@@ -37,6 +37,8 @@ extern wxString g_someStringValue;
 constexpr int k_FirstContextMenu = wxID_HIGHEST + 1;
 constexpr int k_SecondContextMenu = wxID_HIGHEST + 2;
 constexpr int k_ThirdContextMenu = wxID_HIGHEST + 3;
+constexpr int k_FourthContextMenu = wxID_HIGHEST + 4;
+constexpr int k_FifthContextMenu = wxID_HIGHEST + 5;
 
 
 #endif

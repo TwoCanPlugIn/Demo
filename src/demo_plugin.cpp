@@ -25,6 +25,7 @@
 // 1.0 Initial Release
 // 03/05/2026 - 1.1 Export waypoints using GeoJSON format
 // 14/05/2026 - 1.2 Export Waypoints to SignalK
+// 30/06/2026 - 1.3 Export Routes using RTZ and IHO S-421
 
 #include "demo_plugin.h"
 
@@ -39,6 +40,12 @@
 
 // Implements a dialog to demonstrate modifying settings from the Plugin Preferences option
 #include "demo_settings.h"
+
+// Implements a class that exports routes in RTZ format
+#include "demo_rtz.h"
+
+// Implements a class that exports routes in S-421 format
+#include "demo_s421.h"
 
 // The class factories, used to create and destroy instances of the PlugIn
 extern "C" DECL_EXP opencpn_plugin* create_pi(void *ppimgr) {
@@ -75,13 +82,21 @@ int DemoPlugin::Init(void) {
 
 	// Example of adding an item to a sub context menu
 	// Valid Sub Menu Names are "Route", "Waypoint", "Track", "AIS")
+	// Export waypoint as either GPX or GeoJSON
 	auto exportMenu = new wxMenuItem(NULL, k_SecondContextMenu, "Export Waypoint", "Export Waypoint as GPX or GeoJSON", wxITEM_NORMAL, NULL);
 	exportWaypointMenuId = AddCanvasContextMenuItemExt(exportMenu, this, "Waypoint");
 
-	// Export to SignalK
+	// Export waypoint to SignalK
 	auto signalKMenu = new wxMenuItem(NULL, k_SecondContextMenu, "Export to SignalK", "Export Waypoint to SignalK", wxITEM_NORMAL, NULL);
 	exportSignalKMenuId = AddCanvasContextMenuItemExt(signalKMenu, this, "Waypoint");
 
+	// Export route to RTZ
+	auto rtzMenu = new wxMenuItem(NULL, k_ThirdContextMenu, "Export RTZ", "Export Route using RTZ", wxITEM_NORMAL, NULL);
+	exportRTZMenuId = AddCanvasContextMenuItemExt(rtzMenu, this, "Route");	
+
+	// Export route to S-421
+	auto s421Menu = new wxMenuItem(NULL, k_FourthContextMenu, "Export S-421", "Export Route using S-421", wxITEM_NORMAL, NULL);
+	exportS421MenuId = AddCanvasContextMenuItemExt(s421Menu, this, "Route");
 
 	// Example of adding a Toolbar button
 	// Firstly obtain the toolbar button icons
@@ -218,6 +233,14 @@ void DemoPlugin::OnContextMenuItemCallbackExt(int id, std::string obj_ident, std
 		wxString text = ExportToSignalK(obj_ident);
 		wxString uri("http://localhost:3000/signalk/v2/api/resources/waypoints");
 		PostToSignalK(uri, text);
+	}
+
+	if (id == exportRTZMenuId) {
+		ExportToRTZ(obj_ident);
+	}
+
+	if (id == exportS421MenuId) {
+		ExportToS421(obj_ident);
 	}
 }
 
@@ -468,4 +491,136 @@ bool DemoPlugin::PostToSignalK(wxString& url, wxString& jsonText) {
 	request.Start();
 
 	return result;
+}
+
+bool DemoPlugin::ExportToRTZ(std::string& guid) {
+	// Retrieve the route details
+	auto routeDetails = GetRouteExV2_Plugin(wxString(guid));
+	auto waypointList = routeDetails->pWaypointList;
+
+	// Format the XML document 
+	// Note using g_someStringValue to store the vessel's name.
+	auto rtzRoute = std::make_unique <DemoRTZ>();
+	rtzRoute->CreateRoute(routeDetails->m_NameString.ToStdString(), 
+		g_someStringValue.ToStdString());
+
+	// OpenCPN needs to define further attributes to populate these fields
+	Schedule rtzSchedule;
+
+	int waypointId = 0;
+	for (Plugin_WaypointExV2List::iterator it = waypointList->begin();
+		it != waypointList->end(); ++it) {
+
+		auto waypoint = *it;
+
+		// RTZ Leg Information
+		LegAttributes legAttribute;
+		legAttribute.geometryType = "Loxodrome"; 
+		// For long routes, while OpenCPN will use a great circle, each of the 
+		// generated waypoints are rhumb lines
+		legAttribute.speedMax = legAttribute.speedMin = waypoint->m_PlannedSpeed;
+		legAttribute.legInfo = wxString::Format("WPT%03d", waypointId).ToStdString(); // waypoint->m_MarkDescription.ToStdString();
+		// BUG BUG Could copy the hyperlinks to legNote1 or legNote2
+		
+		// Add the waypoint information (including leg information)
+		rtzRoute->AddWaypoint(waypointId, 1, waypoint->m_lat, waypoint->m_lon,
+			waypoint->m_MarkName.ToStdString(), waypoint->m_WaypointArrivalRadius, legAttribute);
+
+		// RTZ Schedule Information
+		ScheduleElement scheduleAttribute;
+		scheduleAttribute.etd = waypoint->m_ETD.FormatISOCombined().ToStdString();
+		scheduleAttribute.speed = waypoint->m_PlannedSpeed;
+		scheduleAttribute.waypointId = waypointId;
+
+		// OpenCPN has no mechanism to manually enter in schedule information
+		// so we only populate the calculated RTZ schedule field
+		rtzSchedule.calculated.push_back(scheduleAttribute);
+
+		waypointId++;
+	}
+
+	rtzSchedule.name= wxString::Format("From %s to %s", routeDetails->m_StartString.ToStdString(), 
+		routeDetails->m_EndString).ToStdString();
+	rtzSchedule.id = 1;
+	rtzRoute->AddSchedule(rtzSchedule);
+
+	// Prompt the user for a file name
+	wxFileDialog fileSaveDialog(GetOCPNCanvasWindow(), _("Export Route as RTZ"),
+		wxStandardPaths::Get().GetDocumentsDir(), "", "RTZ (*.rtz)|*.rtz",
+		wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+
+	// And save the RTZ file
+	if (fileSaveDialog.ShowModal() == wxID_OK) {
+		if (rtzRoute->Save(fileSaveDialog.GetPath().ToStdString())) {
+			wxMessageBox("Saved RTZ file", "Demo Plugin");
+			return true;
+		}
+		else {
+			wxMessageBox("Failed to save RTZ file", "Demo Plugin");
+		}
+	}
+	return false;
+}
+
+bool DemoPlugin::ExportToS421(std::string& guid) {
+
+	// Retrieve the route details
+	auto routeDetails = GetRouteExV2_Plugin(wxString(guid));
+	auto waypointList = routeDetails->pWaypointList;
+
+	// Format the XML document
+	auto s421Route = std::make_unique <DemoS421>();
+
+	s421Route->CreateDataset();
+
+	s421Route->AddRouteInfo(routeDetails->m_NameString.ToStdString(), "OpenCPN", 
+		GetActiveRouteGUID() == routeDetails->m_GUID ? "Active" : "Planned");
+
+	S421Schedule schedule;
+	schedule.id = 1;
+	schedule.name = wxString::Format("From %s to %s", routeDetails->m_StartString,
+		routeDetails->m_EndString).ToStdString();
+
+	int waypointId = 0;
+	for (Plugin_WaypointExV2List::iterator it = waypointList->begin();
+		it != waypointList->end(); ++it) {
+		auto waypoint = *it;
+
+		S421Waypoint s421Waypoint;
+		s421Waypoint.id = waypointId;
+		s421Waypoint.lat = waypoint->m_lat;
+		s421Waypoint.lon = waypoint->m_lon;
+		s421Waypoint.name = waypoint->m_MarkName.ToStdString();
+		s421Route->AddWaypoint(s421Waypoint);
+
+		S421ScheduleElement se;
+		se.waypointId = waypointId;
+		se.etd = waypoint->m_ETD.FormatISOCombined().ToStdString();
+		se.speed = waypoint->m_PlannedSpeed;
+		// OpenCPN doesn't have a waypoint ETA field.
+
+		schedule.calculated.push_back(se);
+
+		waypointId++;
+	}
+
+	s421Route->AddSchedule(schedule);
+
+	// Prompt the user for a file name
+	wxFileDialog fileSaveDialog(GetOCPNCanvasWindow(), _("Export Route as S-421"),
+		wxStandardPaths::Get().GetDocumentsDir(), "", "S421 (*.s421)|*.s421",
+		wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+
+	// And save the S421 file
+	if (fileSaveDialog.ShowModal() == wxID_OK) {
+		// This also generates the metdata etc.
+		if (s421Route->SaveHDF5(fileSaveDialog.GetPath().ToStdString())) {
+			wxMessageBox("Saved S-421 file", "Demo Plugin");
+			return true;
+		}
+		else {
+			wxMessageBox("Failed to save S-421 file", "Demo Plugin");
+		}
+	}
+	return false;
 }

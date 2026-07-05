@@ -33,6 +33,10 @@ DemoToolbox::DemoToolbox( wxWindow* parent) : DemoToolboxBase(parent) {
 	checkBoxBoolean->SetValue(g_someBooleanValue);
 	sliderInteger->SetValue(g_someIntegerValue);
 	textString->SetValue(g_someStringValue);
+
+	// For this demo, we need a vessel name to export to RTZ and S421
+	labelString->SetLabel("Vessel Name");
+
 }
 
 DemoToolbox::~DemoToolbox() {

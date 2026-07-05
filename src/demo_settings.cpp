@@ -44,6 +44,9 @@ void DemoSettings::OnInit(wxInitDialogEvent& event) {
 	sliderInteger->SetValue(g_someIntegerValue);
 	textString->SetValue(g_someStringValue);
 
+	// For this demo, we need a vessel name to export to RTZ and S421
+	labelString->SetLabel("Vessel Name");
+
 	Layout();
 	Fit();
 

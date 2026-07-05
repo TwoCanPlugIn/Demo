@@ -52,8 +52,10 @@ set(SRC
     ${CMAKE_SOURCE_DIR}/src/demo_globals.cpp
     ${CMAKE_SOURCE_DIR}/src/demo_wizard.cpp
     ${CMAKE_SOURCE_DIR}/src/demo_toolbox.cpp
-     ${CMAKE_SOURCE_DIR}/src/demo_settings.cpp
+    ${CMAKE_SOURCE_DIR}/src/demo_settings.cpp
     ${CMAKE_SOURCE_DIR}/src/demo_ui_base.cpp
+    ${CMAKE_SOURCE_DIR}/src/demo_rtz.cpp
+    ${CMAKE_SOURCE_DIR}/src/demo_s421.cpp
 )
 set (INC
     ${CMAKE_SOURCE_DIR}/inc/demo_plugin.h
@@ -62,6 +64,8 @@ set (INC
     ${CMAKE_SOURCE_DIR}/inc/demo_toolbox.h
     ${CMAKE_SOURCE_DIR}/inc/demo_settings.h
     ${CMAKE_SOURCE_DIR}/inc/demo_ui_base.h
+    ${CMAKE_SOURCE_DIR}/inc/demo_rtz.h
+    ${CMAKE_SOURCE_DIR}/inc/demo_s421.h
 )
 
 set (SOURCE_FILES ${SRC} ${INC})
@@ -83,5 +87,6 @@ macro(add_plugin_libraries)
 
     add_subdirectory("opencpn-libs/wxJSON")
     target_link_libraries(${PACKAGE_NAME} ocpn::wxjson)
+
 
 endmacro ()
