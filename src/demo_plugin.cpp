@@ -228,11 +228,16 @@ void DemoPlugin::OnContextMenuItemCallbackExt(int id, std::string obj_ident, std
 		ExportWaypoints(guids);
 	}
 
-	// BUG BUG, the SignalK Server address & port shoud be obtained from GetActiveDrivers
+	//  Obtain the SignalK Server address & port
 	if (id == exportSignalKMenuId) {
-		wxString text = ExportToSignalK(obj_ident);
-		wxString uri("http://localhost:3000/signalk/v2/api/resources/waypoints");
-		PostToSignalK(uri, text);
+		wxString signalKServerAddress;
+		wxString signalKServerPort;
+		if (GetSignalKServer(&signalKServerAddress, &signalKServerPort)) {
+			wxString text = ExportToSignalK(obj_ident);
+			wxString uri = wxString::Format("http://%s:%s/signalk/v2/api/resources/waypoints",
+				signalKServerAddress, signalKServerPort);
+				PostToSignalK(uri, text);
+		}
 	}
 
 	if (id == exportRTZMenuId) {
@@ -571,7 +576,7 @@ bool DemoPlugin::ExportToS421(std::string& guid) {
 	// Format the XML document
 	auto s421Route = std::make_unique <DemoS421>();
 
-	s421Route->CreateDataset();
+	s421Route->CreateDataset("DemoPlugin");
 
 	s421Route->AddRouteInfo(routeDetails->m_NameString.ToStdString(), "OpenCPN", 
 		GetActiveRouteGUID() == routeDetails->m_GUID ? "Active" : "Planned");
@@ -621,6 +626,41 @@ bool DemoPlugin::ExportToS421(std::string& guid) {
 		else {
 			wxMessageBox("Failed to save S-421 file", "Demo Plugin");
 		}
+	}
+	return false;
+}
+
+// Iterate thedata connections to get the IP address of a SignalK Server connection
+bool DemoPlugin::GetSignalKServer(wxString* ipAddress, wxString* ipPort) {
+	// Handle to OpenCPN connection object
+	wxFileConfig* configSettings = GetOCPNConfigObject();
+	wxString dataConnections;
+
+	if (configSettings) {
+		configSettings->SetPath("/Settings/NMEADataSource");
+		configSettings->Read("DataConnections", &dataConnections, wxEmptyString);
+
+		if (!dataConnections.IsEmpty()) {
+			// Iterate each connection delimited by |
+			wxArrayString connections = wxStringTokenize(dataConnections, "|");
+			for (const auto& connection : connections) {
+				// Iterate each elements delimited by ;
+				wxArrayString items = wxStringTokenize(connection, ";");
+				// Connection Types: 0 = UDP, 1 = TCP, 2 = GPSD, 3 = SignalK 
+				if (items[1] == "3") {
+					*ipAddress = items[2];
+					*ipPort = items[3];
+					return true;
+				}
+			}
+			wxLogMessage("Demo Plugin, Error no SignalK Server connection");
+		}
+		else {
+			wxLogMessage("Demo Plugin, Error no Data Connections");
+		}
+	}
+	else {
+		wxMessageBox("Demo Plugin, Error getting OpenCPN settings");
 	}
 	return false;
 }

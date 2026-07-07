@@ -32,6 +32,7 @@
 #include <wx/fileconf.h>
 #include <wx/file.h>
 #include <wx/webrequest.h>
+#include <wx/tokenzr.h>
 
 // Bundled XML libraries
 #include <pugixml.hpp>
@@ -99,6 +100,9 @@ private:
 	// Toolbar button Id & state
 	int exportWaypointsToolbarId;
 	bool isToolbarActive;
+
+	// Helper to obtain the IP address and port of the SignalK connection
+	bool GetSignalKServer(wxString* ipAddress, wxString* ipPort);
 
 };
 
