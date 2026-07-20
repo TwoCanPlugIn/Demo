@@ -23,6 +23,7 @@
 // Date: 10/01/2026
 // Version History: 
 // 1.0 Initial Release
+// 1.0.1, 28/04/2026 - Updated for Active Captain POC
 
 #include "demo_toolbox.h"
 
@@ -30,23 +31,19 @@
 
 // Constructor and destructor implementation
 DemoToolbox::DemoToolbox( wxWindow* parent) : DemoToolboxBase(parent) {
-	checkBoxBoolean->SetValue(g_someBooleanValue);
-	sliderInteger->SetValue(g_someIntegerValue);
-	textString->SetValue(g_someStringValue);
+	
+	checkMarina->SetValue(g_showMarina);
+	checkAnchorage->SetValue(g_showAnchorage);
+	checkHazard->SetValue(g_showHazard);
+	checkBusiness->SetValue(g_showBusiness);
+	checkBoatRamp->SetValue(g_showBoatRamp);
+	checkBridge->SetValue(g_showBridge);
+	checkDam->SetValue(g_showDam);
+	checkFerry->SetValue(g_showFerry);
+	checkLock->SetValue(g_showLock);
+	bitmapGarmin->SetBitmap(pluginBitmap);
+	labelDisclaimer->SetLabel("Active Captain\xae and Garmin\xae are registered trademarks of Garmin Ltd.\nThis plugin is not developed, endorsed or supported by Garmin.");
 }
 
 DemoToolbox::~DemoToolbox() {
-}
-
-// Note a bug in the logic. The global settings are updated even if the dialog is cancelled!
-void DemoToolbox::OnCheckBoolean(wxCommandEvent& event) {
-	g_someBooleanValue = checkBoxBoolean->IsChecked();
-}
-
-void DemoToolbox::OnSliderChanged(wxScrollEvent& event) { 
-	g_someIntegerValue = sliderInteger->GetValue();
-}
-
-void DemoToolbox::OnTextChanged(wxCommandEvent& event) {
-	g_someStringValue = textString->GetValue();
 }

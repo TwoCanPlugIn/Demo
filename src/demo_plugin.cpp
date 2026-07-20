@@ -17,53 +17,18 @@
 //
 
 //
-// Project: Demo Plugin
-// Description: Demonstrate the use of the OpenCPN plugin API's
+// Project: Active Captain Plugin
+// Description: A variation of the Demo plugin, fetching Garmin Active Captain  Points of Interest
 // Owner: twocanplugin@hotmail.com
 // Date: 10/01/2026
 // Version History: 
 // 1.0 Initial Release
-// Chapter 1. A Basic plugin, that does little except to dump some common OpenCPN file paths
-// Chapter 2. Plugin initial configuration and settings
-// Chapter 3. Saving & Loading settings and modifying settings using the toolbox
-// Chapter 4. User interaction - Context Menus
-// Chapter 5. User interaction - Toolbar Buttons
-// Chapter 6. Navigation Data - (6a. Using callback API, 6b. Using Observer/Listener model)
-// Chapter 7. NMEA 0183 - (7a. Receiving data using callback API, 7b. Using Observer/Listener model)
-//            NMEA 0183 - (7c. Transmitting Data using PushNMEABuffer API)
-//			  NMEA 0183 - (7d. Transmitting Data using Observer/Listener model)
-// Chapter 8. NMEA 2000 - (8a. Receiving NMEA 2000 data)
-//			  NMEA 2000 - (8b. Transmitting NMEA 2000 data)
-// Chapter 9. Plugin Messaging - (9a. Receiving messages using callback API)
-//            Plugin Messaging - (9b. Transmit messages using SendPluginMessage API)
-//			  Plugin Messaging - (9c. Receiving messages using Observer/Listener model)
-//			  Plugin Messaging - (9d. Transmit messages  using Observer/Listener model)
-// Chapter 10. SignalK - (10a. Receive SignalK updates using Plugin Messaging)
-//			   SignalK - (10b. Receive SignalK updates using Observer/Listener model)
-// Chapter 11. Routes and Waypoints - (11a. Retrieve Waypoints)
-//			   Routes and Waypoints - (11b. Retrieve Routes)
-//			   Routes and Waypoints - (11c. Adding a Waypoint)
-//			   Routes and Waypoints - (11d. Modifying a Waypoint)
-//			   Routes and Waypoints - (11e. Adding a Route)
-//			   Routes and Waypoints - (11f. Modifying a Route)
-// Chapter 12. Drawing on the Canvas Non OpenGL - (12a. Using a Device Context)
-//			   Drawing on the Canvas Non OpenGL - (12b. Using a Graphics Context)
-//			   Drawing on the Canvas Non OpenGL - (12c. Using Graphics Context transform/translate functions etc.)
-// Chapter 13. Drawing on the Canvas using OpenGL
+// 1.0.1, 28/04/2026 - Updated for Active Captain POC
+// To contemplate for a future release (if any)
+// Retrieve more POI's and store in a quadtree to support pan & zoom
+// Use the Active Captain SDK to store a local copy of the Active Captain database and allow users to comment or review
 
 #include "demo_plugin.h"
-
-// Global variables accessed by the plugin and various dialogs
-#include "demo_globals.h"
-
-// Implements a wxWizard dialog to configure the plugin's initial settings
-#include "demo_wizard.h"
-
-// Implements the toolbox page to demonstrate modifying settings from the Toobox page
-#include "demo_toolbox.h"
-
-// Implements a dialog to demonstrate modifying settings from the Plugin Preferences option
-#include "demo_settings.h"
 
 // The class factories, used to create and destroy instances of the PlugIn
 extern "C" DECL_EXP opencpn_plugin* create_pi(void *ppimgr) {
@@ -78,11 +43,42 @@ extern "C" DECL_EXP void destroy_pi(opencpn_plugin* p) {
 // As the plugin uses newer functions, it requires a plugin API version of at least 1.20
 DemoPlugin::DemoPlugin(void* ppimgr) : opencpn_plugin_120(ppimgr), wxEvtHandler() {
 	
-	// Initialize the plugin bitmap, converting from SVG to PNG. Refer to GetPluginBitmap below
-	// Note the icon file is located in the source repository data folder
-	// and consequently will be installed into user's plugin data fiolder
+	// All the bitmaps used by the plugin, both for itself and for rendering POI's on the chart
 	wxString pluginFolder = GetPluginDataDir(PKG_NAME) + wxFileName::GetPathSeparator() + "data" + wxFileName::GetPathSeparator();
-	g_pluginBitmap = GetBitmapFromSVGFile(pluginFolder + "demo_plugin.svg", 32, 32);
+	
+	// Garmin Active Captain Logo used for Plugin Manager and Settings dialogs
+	pluginBitmap.LoadFile(pluginFolder + "garmin.bmp", wxBITMAP_TYPE_BMP);
+	wxBitmap::Rescale(pluginBitmap, wxSize(32, 32));
+
+	// Similar to above but with black border to match toolbar panel background
+	toolbarBitmap.LoadFile(pluginFolder + "garmin-toolbar.bmp", wxBITMAP_TYPE_BMP);
+	wxBitmap::Rescale(toolbarBitmap, wxSize(32, 32));
+
+	// Initialize the Garmin POI bitmaps (These were converted from the official Garmin POI icons)
+	bitmapMarina.LoadFile(pluginFolder + "marina.bmp", wxBITMAP_TYPE_BMP);
+	bitmapAnchorage.LoadFile(pluginFolder + "anchorage.bmp", wxBITMAP_TYPE_BMP);
+	bitmapHazard.LoadFile(pluginFolder + "hazard.bmp", wxBITMAP_TYPE_BMP);
+	bitmapBusiness.LoadFile(pluginFolder + "shop.bmp", wxBITMAP_TYPE_BMP);
+	bitmapBoatRamp.LoadFile(pluginFolder + "boat_ramp.bmp", wxBITMAP_TYPE_BMP);
+	bitmapBridge.LoadFile(pluginFolder + "bridge.bmp", wxBITMAP_TYPE_BMP);
+	bitmapDam.LoadFile(pluginFolder + "dam.bmp", wxBITMAP_TYPE_BMP);
+	bitmapFerry.LoadFile(pluginFolder + "ferry.bmp", wxBITMAP_TYPE_BMP);
+	bitmapInlet.LoadFile(pluginFolder + "inlet.bmp", wxBITMAP_TYPE_BMP);
+	bitmapLock.LoadFile(pluginFolder + "lock.bmp", wxBITMAP_TYPE_BMP);
+	bitmapDefault.LoadFile(pluginFolder + "garmin.bmp", wxBITMAP_TYPE_BMP);
+	
+	// BUG BUG - Could either have scaled bitmaps for different viewport scales, or rescale on the fly
+	wxBitmap::Rescale(bitmapMarina, wxSize(32, 32));
+	wxBitmap::Rescale(bitmapAnchorage, wxSize(32, 32));
+	wxBitmap::Rescale(bitmapHazard, wxSize(32, 32));
+	wxBitmap::Rescale(bitmapBusiness, wxSize(32, 32));
+	wxBitmap::Rescale(bitmapBoatRamp, wxSize(32, 32));
+	wxBitmap::Rescale(bitmapBridge, wxSize(32, 32));
+	wxBitmap::Rescale(bitmapDam, wxSize(32, 32));
+	wxBitmap::Rescale(bitmapFerry, wxSize(32, 32));
+	wxBitmap::Rescale(bitmapInlet, wxSize(32, 32));
+	wxBitmap::Rescale(bitmapLock, wxSize(32, 32));
+	wxBitmap::Rescale(bitmapDefault, wxSize(32, 32));
 }
 
 // Destructor
@@ -91,64 +87,28 @@ DemoPlugin::~DemoPlugin(void) {
 
 // Perform plugin initialization here. At this point most of OpenCPN has been initialised and most of the plugin API's can be invoked
 int DemoPlugin::Init(void) {
-
-	// Dump some of OpenCPN's special folder paths
-	wxLogMessage("Demo Plugin, OpenCPN Program Path (opencpn executable): %s", GetOCPN_ExePath());
-	wxLogMessage("Demo Plugin, OpenCPN Plugin Path (built-in plugins): %s", *GetpPlugInLocation());
-	wxLogMessage("Demo Plugin, OpenCPN Private Data Path (logs, config): %s", *GetpPrivateApplicationDataLocation());
-	wxLogMessage("Demo Plugin, OpenCPN Shared Data Path: %s", *GetpSharedDataLocation());
-	wxLogMessage("Demo Plugin, Any Plugin's Writeable Documents Path: %s", GetWritableDocumentsDir());
-	wxLogMessage("Demo Plugin, This Plugin's Data Path: %s", GetPluginDataDir(PKG_NAME));
-	wxLogMessage("Demo Plugin, This Plugin's Library Path: %s", GetPlugInPath(this));
-
-	// Dump some of OpenCPN's user measurement preferences
-	wxLogMessage("Demo Plugin, Temperature Units: %s", getUsrTempUnit_Plugin());
-	wxLogMessage("Demo Plugin, Speed Units: %s", getUsrSpeedUnit_Plugin());
-
-	// Dump the location of the user's documents folder
-	wxLogMessage("Demo Plugin, User's Documents: %s", wxStandardPaths::Get().GetDocumentsDir());
 	
 	// Load the previously saved settings
 	LoadSettings();
 
-	// Example of adding an item to the root context menu
-	auto demoContextMenu = new wxMenuItem(NULL, k_FirstContextMenu, "Demo", "Demo Plugin Menu", wxITEM_NORMAL, NULL);
-	demoContextMenuId = AddCanvasContextMenuItem(demoContextMenu, this);
+	// The context menu item allows the user to retrieve information about the selected point of interest
+	auto garminContextMenu = new wxMenuItem(NULL, k_GarminContextMenu, "Garmin (POI)", "Garmin Active Captain Plugin", wxITEM_NORMAL, NULL);
+	garminContextMenuId = AddCanvasContextMenuItem(garminContextMenu, this);
 
-	// Example of adding an item to a sub context menu
-	// Valid Sub Menu Names are "Route", "Waypoint", "Track", "AIS")
-	auto dscMenu = new wxMenuItem(NULL, k_SecondContextMenu, "AIS Demo", "Demo Plugin AIS Sub Menu", wxITEM_NORMAL, NULL);
-	demoAISContextMenuId = AddCanvasContextMenuItemExt(dscMenu, this, "AIS");
-
-	// Example of adding a Toolbar button
-	// Firstly obtain the toolbar button icons
-	wxString pluginFolder = GetPluginDataDir(PKG_NAME) + wxFileName::GetPathSeparator() + "data" + wxFileName::GetPathSeparator();
-
-	// This assumes the plugin is using Scaled Vector Graphics (SVG)
-	wxString normalIcon = pluginFolder + "demo_icon_normal.svg";
-	wxString toggledIcon = pluginFolder + "demo_icon_toggled.svg";
-	wxString rolloverIcon = pluginFolder + "demo_icon_rollover.svg";
-
-	// Finally add the toolbar button, note also requires INSTALLS_TOOLBAR_TOOL
-	// BUG BUG Note that OpenCPN does not implement the rollover state
-	demoToolbarId = InsertPlugInToolSVG("Demo", normalIcon,
-		rolloverIcon, toggledIcon, wxITEM_CHECK, "Demo", "Demo Plugin Toolbar Description", NULL, -1, 0, this);
+	// The toolbar button retrieves the POI's for the current viewport
+	// Ideally the POI's should be retrieved automatically as the viewport is panned or zoom level changes
+	
+	// Using this instead of InsertPlugiInToolSVG as don't have Garmin icons in SVG format.
+	garminToolBarId = InsertPlugInTool("Garmin Active Captain", &toolbarBitmap, &toolbarBitmap,wxITEM_CHECK, 
+		"Garmin Active Captain", "Fetch Garmin Active Captain Points Of Interest", NULL, -1, 0, this);
 
 	// A flag used to indicate the toggled/untoggled state of the toolbar button
 	isToolbarActive = false;
 
-	// Register handler for OpenCPN Navigation Data observer/listener events
-	wxDEFINE_EVENT(EVT_NAV_DATA, ObservedEvt);
-	listener_nav = std::move(GetListener(NavDataId(), EVT_NAV_DATA, this));
-	Bind(EVT_NAV_DATA, [&](ObservedEvt ev) {
-		HandleNavData(ev);
-		});
-
-
 	// Notify OpenCPN what callbacks the plugin registers to receive
-	return (WANTS_CONFIG | INSTALLS_TOOLBOX_PAGE | WANTS_PREFERENCES | INSTALLS_TOOLBAR_TOOL
-		| WANTS_NMEA_EVENTS | WANTS_NMEA_SENTENCES | WANTS_LATE_INIT | WANTS_PLUGIN_MESSAGING
-		| WANTS_OVERLAY_CALLBACK | WANTS_OPENGL_OVERLAY_CALLBACK );
+	return (WANTS_CONFIG | INSTALLS_TOOLBOX_PAGE | WANTS_PREFERENCES | INSTALLS_TOOLBAR_TOOL | 
+		WANTS_OVERLAY_CALLBACK | WANTS_OPENGL_OVERLAY_CALLBACK | WANTS_ONPAINT_VIEWPORT |
+		WANTS_CURSOR_LATLON | WANTS_MOUSE_EVENTS);
 }
 
 // OpenCPN is either closing down, or the plugin has been disabled from the Preferences Dialog
@@ -156,76 +116,6 @@ bool DemoPlugin::DeInit(void) {
 
 	// Note, OpenCPN doesn't actually care about the return value
 	return true; 
-}
-
-// Unnecessary to use Late Initialization in this example, however in case a plugin is loaded 
-// before OpenCPN core services have been started, it allows a plugin to perform further 
-// initialization. Requires WANTS_LATE_INIT
-void DemoPlugin::LateInit(void) {
-	// Register subscriber for NMEA 0183 VHW Speed sentence
-	wxDEFINE_EVENT(EVT_183_VHW, ObservedEvt);
-	NMEA0183Id id_vhw = NMEA0183Id("VHW");
-	listener_vhw = std::move(GetListener(id_vhw, EVT_183_VHW, this));
-	Bind(EVT_183_VHW, [&](ObservedEvt ev) {
-		HandleVHW(ev);
-		});
-
-	// Find an outbound NMEA 0183 connection to use with WriteCommDriver
-	nmea0183Driver = FindOutboundConnection("nmea0183");
-	if (nmea0183Driver.size() > 0) {
-		wxLogMessage("Demo Plugin, Using outbound NMEA 0183 network connection: %s", nmea0183Driver);
-	}
-
-	// Register subscriber for PGN 130306 Wind
-	wxDEFINE_EVENT(EVT_N2K_130306, ObservedEvt);
-	NMEA2000Id id_130306 = NMEA2000Id(130306);
-	listener_130306 = std::move(GetListener(id_130306, EVT_N2K_130306, this));
-	Bind(EVT_N2K_130306, [&](ObservedEvt ev) {
-		HandleN2K_130306(ev);
-		});
-
-	
-	// Register Subcriber for PGN 128259 Boat Speed
-	wxDEFINE_EVENT(EVT_N2K_128259, ObservedEvt);
-	NMEA2000Id id_128259 = NMEA2000Id(128259);
-	listener_128259 = std::move(GetListener(id_128259, EVT_N2K_128259, this));
-	Bind(EVT_N2K_128259, [&](ObservedEvt ev) {
-		HandleN2K_128259(ev);
-		});
-
-	// Find an outbound NMEA 2000 connection to use with WriteCommDriverN2K
-	nmea2000Driver = FindOutboundConnection("nmea2000");
-	if (!nmea2000Driver.empty()) {
-		wxLogMessage("Demo Plugin, Using outbound NMEA 2000 network connection: %s", nmea2000Driver);
-		// For the NMEA 2000 interface, plugins need to register what NMEA 2000 PGN's they transmit.
-		// This is required for Actisense NGT-1 Adapters
-		// Presumably results in a null operation (NOP) for other NMEA 2000 adapters
-		// In this demo plugin We will only transmit PGN 130306 Wind Speed and Direction
-		std::vector<int> transmittedPGN = { 130306 }; 
-		RegisterTXPGNs(nmea2000Driver, transmittedPGN);
-	}
-
-	// Register subscriber for OpenCPN Plugin Messaging
-	wxDEFINE_EVENT(EVT_OCPN_MSG, ObservedEvt);
-	PluginMsgId msg_id = PluginMsgId("OCPN_RTE_ACTIVATED");
-	listener_route = std::move(GetListener(msg_id, EVT_OCPN_MSG, this));
-	Bind(EVT_OCPN_MSG, [&](ObservedEvt ev) {
-		HandleMsg_RouteActivated(ev);
-		});
-
-	// Find an interface for Plugin Messaging
-	messagingDriver = FindOutboundConnection("internal");
-	if (messagingDriver.size() > 0) {
-		wxLogMessage("Demo Plugin, Using outbound internal connection: %s", messagingDriver);
-	}
-	
-	// Register Subscriber for SignalK 
-	wxDEFINE_EVENT(EVT_SIGNALK, ObservedEvt);
-	SignalkId id_signalk = SignalkId("self");
-	listener_signalk = std::move(GetListener(id_signalk, EVT_SIGNALK, this));
-	Bind(EVT_SIGNALK, [&](ObservedEvt ev) {
-		HandleSignalK(ev);
-		});
 }
 
 // OpenCPN Plugin "housekeeping" methods. All plugins MUST implement these
@@ -273,10 +163,9 @@ wxString DemoPlugin::GetLongDescription() {
 	return PKG_DESCRIPTION;
 }
 
-// Most plugins use a 32x32 pixel PNG file converted to xpm by pgn2wx.pl perl script
-// However it might be easier to use a SVG file as you only need to maintain one image format
+// The plugin's bitmap was initialised earlier
 wxBitmap* DemoPlugin::GetPlugInBitmap() {
-	return &g_pluginBitmap;
+	return &pluginBitmap;
 }
 
 // End of mandatory "housekeeping" methods
@@ -287,11 +176,6 @@ void DemoPlugin::SetDefaults(void) {
 	if (installationWizard->RunWizard(installationWizard->m_pages.at(0))) {
 		SaveSettings();
 	}
-}
-
-// This API seems to be deprecated?
-void DemoPlugin::SetupToolboxPanel(int page_sel, wxNotebook* pnotebook) {
-	wxMessageBox(wxString::Format("SetupToolboxPanel invoked: %d", page_sel), "Demo Plugin");
 }
 
 // Invoked when the OpenCPN Toolbox OK, Apply or Cancel buttons are pressed
@@ -306,7 +190,7 @@ void DemoPlugin::OnCloseToolboxPanel(int page_sel, int ok_apply_cancel) {
 // Requires INSTALLS_TOOLBOX_PAGE
 void DemoPlugin::OnSetupOptions(void) {
 	// Add our toolbox to the "User Interface" tab
-	auto toolBoxWindow = AddOptionsPage(OptionsParentPI::PI_OPTIONS_PARENT_UI, _("Demo Settings"));
+	auto toolBoxWindow = AddOptionsPage(OptionsParentPI::PI_OPTIONS_PARENT_UI, _("Active Captain"));
 	auto toolboxSizer = new wxBoxSizer(wxVERTICAL);
 	toolBoxWindow->SetSizer(toolboxSizer);
 	// Create our toolbox panel and add it to the toolbox via the sizer
@@ -317,7 +201,7 @@ void DemoPlugin::OnSetupOptions(void) {
 // Invoked from the plugin's preferences option, enabling the user to modify the plugin's settings.
 // Requires WANTS_PREFERENCES
 void DemoPlugin::ShowPreferencesDialog(wxWindow* parent) {
-	auto demoSettings = std::make_unique<DemoSettings>(parent, wxID_ANY, _("Demo Preferences"));
+	auto demoSettings = std::make_unique<DemoSettings>(parent, wxID_ANY, _("Active Captain Preferences"));
 	if (wxID_OK == demoSettings->ShowModal()) {
 		SaveSettings();
 	}
@@ -325,594 +209,100 @@ void DemoPlugin::ShowPreferencesDialog(wxWindow* parent) {
 
 // Invoked when the plugin's context menu items are selected
 void DemoPlugin::OnContextMenuItemCallback(int id) {
-
-	if (id == demoContextMenuId) {
-		// A plugin can optionally enable/disable their context menus with the following line
-		// SetCanvasContextMenuItemGrey(demoContextMenuId, false);
-		wxMessageBox(wxString::Format("Demo Context Menu Selected, Menu Id: %d", id), 
-			"Demo Plugin");
-	}
-}
-
-// Invoked when a plugin's context sub menu items are selected
-// Note requires an OpenCPN API level of 1.20 or higher
-void DemoPlugin::OnContextMenuItemCallbackExt(int id, std::string obj_ident, std::string obj_type, double lat, double lon) {
-
-	if (id == demoAISContextMenuId) {
-		wxMessageBox(wxString::Format("Object Id: %d\nObject Identifier (MMSI): %s\nObject Type: %s\nLatitude: %s\nLongitude: %s",
-			id, obj_ident.c_str(), obj_type.c_str(),
-			toSDMM_PlugIn(1, lat, true), toSDMM_PlugIn(2, lon, true)), "AIS Target Information", wxOK | wxICON_INFORMATION);
+	// SetCursorLatLon should have set the POI id if the cursor was on a PI, otherwise it is an empty string
+	if (id == garminContextMenuId) {
+		RequestGarminPointOfInterest(pointOfInterestId);
 	}
 }
 
 // Invoked when the plugin's toolbar button is presssed
 void DemoPlugin::OnToolbarToolCallback(int id) {
-	if (id == demoToolbarId) {
-		// Just display a message box. 
-		// Note toggling the state of the toolbar while the message box is displayed
+	if (id == garminToolBarId) {
+		// Retrieve all points of interest for the current viewport
 		isToolbarActive = !isToolbarActive;
 		SetToolbarItemState(id, isToolbarActive);
-		//ReverseRoute();
-		//CreateRoute();
-		//ModifyWaypoint();
-		//CreateWaypoint();
-		//GetAllRoutes();
-		//GetAllWaypoints();
-		wxMessageBox(wxString::Format("Demo Toolbar invoked, Id: %d", id), "Demo Plugin");
+		RequestGarminPointOfInterest();
+		if (pointsOfInterest.size() > 0) {
+			RequestRefresh(GetOCPNCanvasWindow());
+		}
 		isToolbarActive = !isToolbarActive;
 		SetToolbarItemState(id, isToolbarActive);
 	}
 }
 
-// The "old" method for receiving Navigation Data from OpenCPN. Requires WANTS_NMEA_EVENTS
-void DemoPlugin::SetPositionFixEx(PlugIn_Position_Fix_Ex& pfix) {
-	// Persist our current position and heading
-	// We will use the heading value in later chapters
-	currentLatitude = pfix.Lat;
-	currentLongitude = pfix.Lon;
-	trueHeading = pfix.Hdt;
-	magneticHeading = pfix.Hdm;
-
+// This callback provides the cursorposition. Use it to determine if over a point of interest, 
+// and enable/disable the context menu
+void DemoPlugin::SetCursorLatLon(double lat, double lon) {
+	if (IsUnderCursor(lat, lon, &pointOfInterestId)) {
+		SetCanvasContextMenuItemGrey(garminContextMenuId, false);
+	}
+	else {
+		SetCanvasContextMenuItemGrey(garminContextMenuId, true);
+	}
 }
 
-// The "new" method for receiving Navigation Data from OpenCPN. The handler must be 
-// registered and the plugin class inherits from the wxWidgets wxEvtHandler class
-void DemoPlugin::HandleNavData(ObservedEvt ev) {
-	// Persist our current position and heading
-	// We will use the heading value in later chapters
-	PluginNavdata navdata = GetEventNavdata(ev);
-	currentLatitude = navdata.lat;
-	currentLongitude = navdata.lon;
-	trueHeading = navdata.hdt;
-
-	// As this is invoked by OpenCPN once per second, also use this to generate true wind
-	// sentences, using data received from wind and boat speed NMEA 0183 sentences
-	CalculateTrueWind();
-	// Generate the NMEA 0183 MWV sentence and transmit it.
-	// This is using the "old" API.
-	// PushNMEABuffer(FormatTrueWindSentence());
+// When the user double clicks on the POI, retrieve the detailed information for the POI
+// BUG BUG, Seems to be broken on non OpenGL ??
+bool DemoPlugin::MouseEventHook(wxMouseEvent& event) {
 	
-	// This is using the "new" Observer/Listener model.
-	// Only transmit if we have a valid outbound nmea0183 connection
-	if (!nmea0183Driver.empty()) {
-		wxString sentence = FormatTrueWindSentence();
-		SendNMEA0183(nmea0183Driver, sentence.ToStdString());
+	// Only perform these actions if we have an Internet connection
+	if (!OCPN_isOnline()) {
+		return false;
 	}
+	double lat, lon;
 
-	// Transmit NMEA 2000 message using Observer/Listener model
-	// Only transmit if we have a valid outbound nmea2000 connection
-	if (!nmea2000Driver.empty()) {
-		std::vector<uint8_t> payload = FormatTrueWindMessage();
-		SendNMEA2000(nmea2000Driver, 255, 4, 130306, payload);
-	}
+	// Handle a double click event to retrieve the POI information
+	if (event.LeftDClick()) {
 
-	// Transmit an OpenCPN Plugin message using the "old" method
-	wxString jsonMessage = FormatTrueWindJSON();
-	// SendPluginMessage("Demo_Plugin", jsonMessage);
+		// Convert Pixel Co-ordinates to latitude and longitude
+		GetCanvasLLPix(&viewPort, event.GetPosition(), &lat, &lon);
 
-	// Transmit an OpenCPN Plugin message using the "new" method
-	// Note the space between the message id and message body
-	wxString pluginMessage = "Demo_Plugin " + jsonMessage;
-
-	if (!messagingDriver.empty()) {
-		SendJSONMessage(messagingDriver, pluginMessage.ToStdString());
-	}
-}
-
-// The "old" method for receiving NMEA 0183 data. The plugin will receive all sentences
-// so not necessarily very efficient. Requires WANTS_NMEA_SENTENCES
-void DemoPlugin::SetNMEASentence(wxString& sentence) {
-	// The sentence is the complete NMEA 0183 sentence as received by OpenCPN, including
-	// sentence delimiter, talker id, mnemonic, checksum delimiter (*) and checksum
-
-	// Using the NMEA 0183 libraries as included with OpenCPN
-	NMEA0183 parserNMEA0183;
-	parserNMEA0183 << sentence;
-	// This checks that the sentence is valid (has a talker id, mnemonic & valid checksum)
-	if (parserNMEA0183.PreParse()) {
-		// For this demo, we're only interested in data generated by a wind transducer
-		// $WIMWV,190.0,R,11.4,K,A*1A
-		if (parserNMEA0183.LastSentenceIDReceived == "MWV") {
-			ParseWind(&parserNMEA0183);
+		// Iterate over the points of interest and see if any  were the double click target
+		if (IsUnderCursor(lat, lon, &pointOfInterestId)) {
+			// Request the detailed information for the POI
+			RequestGarminPointOfInterest(pointOfInterestId);
+			return true;
 		}
 	}
+	// Returning false allows the event to be forwarded to OpenCPN (eg. chart object properties)
+	// whereas true means we handled the event and the event is not propogated
+	return false;
 }
 
-// Extract the wind speed & angle from a NMEA 0183 MWV sentence
-void DemoPlugin::ParseWind(NMEA0183* nmeaSentence) {
-	if (nmeaSentence->Parse()) {
-		// Only interested in apparent wind angle rather than true wind angle
-		if (nmeaSentence->Mwv.Reference == "R") {
-			apparentWindAngle = nmeaSentence->Mwv.WindAngle;
-			// Using the helper API fromUsrWindSpeed_Plugin to convert the speed into knots
-			// WSPEED_KTS = 0, WSPEED_MS, WSPEED_MPH, WSPEED_KMH
-			if (nmeaSentence->Mwv.WindSpeedUnits == "N") {
-				// Knots (Nautical Miles per Hour)
-				apparentWindSpeed = fromUsrWindSpeed_Plugin(nmeaSentence->Mwv.WindSpeed, 0);
-			}
-			else if (nmeaSentence->Mwv.WindSpeedUnits == "M") {
-				// Metres per second
-				apparentWindSpeed = fromUsrWindSpeed_Plugin(nmeaSentence->Mwv.WindSpeed, 1);
-			}
-			else if (nmeaSentence->Mwv.WindSpeedUnits == "S") {
-				// Statute Miles per hour
-				apparentWindSpeed = fromUsrWindSpeed_Plugin(nmeaSentence->Mwv.WindSpeed, 2);
-			}
-			else if (nmeaSentence->Mwv.WindSpeedUnits == "K") {
-				// Kilometres per hour
-				apparentWindSpeed = fromUsrWindSpeed_Plugin(nmeaSentence->Mwv.WindSpeed, 2);
-			}
+// Persist the viewport as it is used to determine the bounding box for retrieving Active Captain POI's
+void DemoPlugin::SetCurrentViewPort(PlugIn_ViewPort& vp) {
 
-			// For the time being, we'll just log the data
-			// In later Chapters we'll use this data to draw on the canvas
-			//wxLogMessage("Demo Plugin, Wind Direction: %0.2f, Wind Speed (knots) %0.2f",
-			//	apparentWindAngle, apparentWindSpeed);
-		}
-	}
+	viewPort = vp;
 }
 
-// Parse NMEA 0183 Speed through Water sentence obtained from observer/listener model
-void DemoPlugin::HandleVHW(ObservedEvt ev) {
+// Determine if the cursor is over a point of interest
+// BUG BUG Probably has a crossing International Date Line bug
+bool DemoPlugin::IsUnderCursor(const double lat, const double lon, wxString* id) {
 
-	NMEA0183Id id_183_vhw("VHW");
-	NMEA0183 parserNMEA0183;
-	wxString sentence = GetN0183Payload(id_183_vhw, ev);
-	parserNMEA0183 << sentence;
+	*id = wxEmptyString;
 
-	if (parserNMEA0183.Parse()) {
-		// Persist the Speed Through Water value, this will be used
-		// in subsequent chapters.
-		boatSpeed = parserNMEA0183.Vhw.Knots;
-	}
-}
-
-// Given heading, boat speed and apparent wind angle and speed, calculate true wind angle and direction
-void DemoPlugin::CalculateTrueWind(void) {
-
-	if (apparentWindAngle < 180.0f) {
-		trueWindAngle = 90.0f - (180.0f / M_PI * atan((apparentWindSpeed * cos(apparentWindAngle * M_PI / 180.0f) - boatSpeed) / (apparentWindSpeed * sin(apparentWindAngle * M_PI / 180.0f))));
-	}
-	else if (apparentWindAngle > 180.0f) {
-		trueWindAngle = 360.0f - (90.0f - (180.0f / M_PI * atan((apparentWindSpeed * cos((180.0f - (apparentWindAngle - 180.0f)) * M_PI / 180.0f) - boatSpeed) / (apparentWindSpeed * sin((180.0f - (apparentWindAngle - 180.0f)) * M_PI / 180.0f)))));
-	}
-	else {
-		trueWindAngle = 180.0f;
-	}
-	trueWindSpeed = sqrt(pow((apparentWindSpeed * cos(apparentWindAngle * M_PI / 180.0f)) - boatSpeed, 2) + pow(apparentWindSpeed * sin(apparentWindAngle * M_PI / 180.0f), 2));
-
-	trueWindDirection = fmod(trueWindAngle + trueHeading, 360.0f);
-}
-
-
-// Generate NMEA 0183 MWV Sentence for True Wind Angle, using OpenCPN support library 
-wxString DemoPlugin::FormatTrueWindSentence(void) {
-	NMEA0183 NMEA0183parser;
-	SENTENCE NMEASentence;
-
-	NMEA0183parser.TalkerID = "II";
-	NMEA0183parser.Mwv.Empty();
-	NMEA0183parser.Mwv.WindAngle = trueWindAngle;
-	NMEA0183parser.Mwv.Reference = "T";
-	NMEA0183parser.Mwv.WindSpeed = trueWindSpeed;
-	NMEA0183parser.Mwv.WindSpeedUnits = "N";
-	NMEA0183parser.Mwv.IsDataValid = NTrue;
-
-	NMEA0183parser.Mwv.Write(NMEASentence);
-
-	return NMEASentence.Sentence;
-}
-
-// Helper function to find required driver handles
-std::string DemoPlugin::FindOutboundConnection(const std::string& connectionType) {
-	// Iterate through all of the OpenCPN connections
-	for (const auto& driver : GetActiveDrivers()) {
-		const auto& attributes = GetAttributes(driver);
-
-		auto protocolIterator = attributes.find("protocol");
-		auto directionIterator = attributes.find("ioDirection");
-
-		if (protocolIterator != attributes.end() && directionIterator != attributes.end()) {
-			// Found a connection matching the required connection and io direction
-			if ((connectionType == protocolIterator->second) && ((directionIterator->second == "OUT")
-				|| (directionIterator->second == "IN/OUT"))) {
-				return driver;
-			}
-		}
-	}
-	return {};
-}
-
-// Send NMEA 0183 Sentence using observer/listener model
-void DemoPlugin::SendNMEA0183(const std::string& driverHandle, const std::string& sentence) {
-	std::vector<uint8_t> payload(sentence.begin(), sentence.end());
-
-	auto sharedPointer = std::make_shared<std::vector<uint8_t> >(std::move(payload));
-	CommDriverResult result = WriteCommDriver(driverHandle, sharedPointer);
-	if (result != RESULT_COMM_NO_ERROR) {
-		wxLogMessage("Demo Plugin, Error sending NMEA 0183 Sentence: %d", result);
-	}
-}
-
-// Note for NMEA 2000 data. 
-// The payload is not "a NMEA 2000 payload" but an Actisense NGT-1 payload (Don't ask!)
-// 
-// The text representation of the binary payload once the Data Link Escape (DLE), 
-// Start of Transmission (STX) and End of Transmission (ETX) delimiters have been removed is:
-// 93 13 02 01 F8 01 FF 01 76 C2 52 00 08 08 70 EB 14 E8 8E 52 D2 BB 10
-// This decodes as:
-// command (1 byte)		0x93 Value = 0x93 indicates NGT-1 format
-// length (1 byte)	    0x13 Length of frame excluding command, length and CRC
-// priority (1 byte)    0x02
-// PGN (3 bytes)        0x01 0xF8 0x01
-// destination(1 byte)  0xFF
-// source (1 byte)      0x01
-// timestamp (4 bytes)  0x76 0xC2 0x52 0x00
-// data length (1 byte) 0x08
-// data (data length)   08 70 EB 14 E8 8E 52 D2
-// checksum (1 byte)	BB Ensures sum of characters % 256 equals 0
-// However the bundled NMEA 2000 parsers handle the "unpacking"
-
-// Parse NMEA 2000 PGN 128269 message (Boat Speed)
-void DemoPlugin::HandleN2K_128259(ObservedEvt ev) {
-	NMEA2000Id id_128259(128259);
-	std::vector<uint8_t> payload = GetN2000Payload(id_128259, ev);
-	unsigned char sequenceId;
-	double boatSpeedWaterReferenced;
-	double boatSpeedGroundReferenced;
-	tN2kSpeedWaterReferenceType waterReferenceType;
-
-	if (ParseN2kPGN128259(payload, sequenceId, boatSpeedWaterReferenced, boatSpeedGroundReferenced, waterReferenceType)) {
-		// Convert from NMEA 2000 SI units which are m/s to OpenCPN's core units
-		boatSpeed = fromUsrSpeed_Plugin(boatSpeedWaterReferenced, 3);
-	}
-}
-
-// Parse NMEA 2000 PGN 130306 message (Wind Speed & Angle)
-void DemoPlugin::HandleN2K_130306(ObservedEvt ev) {
-	NMEA2000Id id_130306(130306);
-	std::vector<uint8_t> payload = GetN2000Payload(id_130306, ev);
-	unsigned char sequenceId;
-	double windSpeed;
-	double windAngle;
-	tN2kWindReference windReferenceType;
-
-	if (ParseN2kPGN130306(payload, sequenceId, windSpeed, windAngle, windReferenceType)) {
-		// Convert from SI Units, m/s and radians to OpenCPN's core units
-		apparentWindSpeed = fromUsrSpeed_Plugin(windSpeed, 3);
-		apparentWindAngle = windAngle * 180 / M_PI;
-	}
-}
-
-// Generate NMEA 2000 PGN 130306 message with True Wind Angle
-std::vector<uint8_t> DemoPlugin::FormatTrueWindMessage(void) {
-	tN2kMsg msg130306;
-	SetN2kWindSpeed(msg130306, 1, trueWindSpeed, trueWindAngle, tN2kWindReference::N2kWind_True_boat);
-	std::vector<uint8_t> data(msg130306.Data, msg130306.Data + msg130306.DataLen);
-	return data;
-}
-
-// Send NMEA 2000 message
-void DemoPlugin::SendNMEA2000(const std::string& driverHandle, const unsigned char& destination,
-	const unsigned char& priority, const unsigned int pgn, std::vector<uint8_t>& payload) {
-	auto sharedPointer = std::make_shared<std::vector<uint8_t>>(payload);
-	CommDriverResult result = WriteCommDriverN2K(driverHandle, pgn, destination, priority, sharedPointer);
-	if (result != RESULT_COMM_NO_ERROR) {
-		wxLogMessage("Demo Plugin, Error sending NMEA 2000 PGN %d: %d", pgn, result);
-	}
-}
-
-// Receive OpenCPN Messages, the "old" way
-// Requires WANTS_PLUGIN_MESSAGING
-void DemoPlugin::SetPluginMessage(wxString& message_id, wxString& message_body) {
-	// We'll just log the Waypoint Activated message without parsing the message body.
-	if (message_id == "OCPN_WPT_ACTIVATED") {
-		wxLogMessage("Demo Plugin, Waypoint activated: %s", message_body);
-	}
-
-	// Receive SignalK updates 
-	else if (message_id == "OCPN_CORE_SIGNALK") {
-		wxJSONValue root;
-		wxJSONReader jsonReader;
-		int error = jsonReader.Parse(message_body, &root);
-		if (error > 0) {
-			wxLogMessage("Demo Plugin, JSON Error in following");
-			wxLogMessage("%s", message_body);
-			wxArrayString jsonErrors = jsonReader.GetErrors();
-			for (auto it : jsonErrors) {
-				wxLogMessage(it);
-			}
-			return;
-		}
-
-		// Upon initial connection, SignalK identifies the vessels for which it stores information
-		// We only want to receive updates for the "self" context
-		// Eg. "self":"urn:mrn:signalk:uuid:1cb1a66a-814c-4478-8b84-701eec9524bb" 
-		// or "self":"vessels.urn:mrn:imo:mmsi:235123456"
-		// We can then match self with a context and only parse those updates 
-		// Eg. "context":"vessels.urn:mrn:signalk:uuid:1cb1a66a-814c-4478-8b84-701eec9524bb"
-
-		if (root.HasMember("self") && root["self"].IsString() ) {
-			selfURN = root["self"].AsString();
-		}
-
-		if (root.HasMember("context") && root["context"].IsString()) {
-			wxString context = root["context"].AsString();
-			// Only parse updates for our own vessel
-			if (context == selfURN) {
-				if (root.HasMember("updates") && root["updates"].IsArray()) {
-					wxJSONValue updates = root["updates"];
-					for (int i = 0; i < updates.Size(); i++) {
-						HandleSKUpdate(updates[i]);
-					}
-				}
-			}
-		}
-	}
-}
-
-// Generate a plugin-specific JSON Message, encoding true wind speed and angle
-// Using the bundled wxJSON library to encode the JSON data
-wxString DemoPlugin::FormatTrueWindJSON(void) {
-	wxJSONValue root;
-	wxJSONWriter writer;
-	wxString data;
-	root["truewind"]["windangle"] = trueWindAngle;
-	root["truewind"]["windspeed"] = trueWindSpeed;
-	if (root.Size() > 0) {
-		writer.Write(root, data);
-		return data;
-	}
-	return {};
-}
-
-// The "new" method for receiving Plugin Messages
-// In this example subscribing to Route Activation messages
-void DemoPlugin::HandleMsg_RouteActivated(ObservedEvt ev) {
-	wxJSONValue root;
-	wxJSONReader jsonReader;
-	PluginMsgId msg_id = PluginMsgId("OCPN_RTE_ACTIVATED");
-	std::string message_body = GetPluginMsgPayload(msg_id, ev);
-	int jsonErrorCount = jsonReader.Parse(message_body, &root);
-	if (jsonErrorCount > 0) {
-		wxLogMessage("Demo Plugin, JSON Error in %s", message_body);
-		wxArrayString jsonErrorStrings = jsonReader.GetErrors();
-		for (auto &it : jsonErrorStrings) {
-			wxLogMessage("Demo Plugin, JSON Error: %s",it);
-		}
-		return;
-	}
-	else {
-		wxString routeName;
-		wxString guid;
-		if (root.HasMember("Route_activated")) {
-			routeName = root["Route_activated"].AsString();
-		}
-		if (root.HasMember("GUID")) {
-			guid = root["GUID"].AsString();
-		}
-		// Just display the route name and globally unique Id (GUID). In a later chapter 
-		// we'll demonstrate retrieving the route details using its guid
-		//wxMessageBox(wxString::Format("Destination: %s\nGUID: %s", routeName, guid), "Demo Plugin");
-
-		// Use the route GUID to retrieve the route details, including the waypoints
-		auto routeDetails = GetRoute_Plugin(guid);
-		auto waypointList = routeDetails->pWaypointList;
-		wxString result;
-		for (Plugin_WaypointList::iterator it = waypointList->begin();
-			it != waypointList->end(); ++it) {
-			auto waypoint = *it;
-			result.append(wxString::Format("\n%s %0.2f %0.2f", waypoint->m_MarkName,
-				waypoint->m_lat, waypoint->m_lon));
-		}
-		wxMessageBox(result, "Route " + routeDetails->m_NameString + " from " + routeDetails->m_StartString);
-	}
-}
-
-// Send a Plugin Message using the "new" observer/listener model.
-void DemoPlugin::SendJSONMessage(const std::string& driverHandle, const std::string& message) {
-	std::vector<uint8_t> payload(message.begin(), message.end());
-	auto sharedPointer = std::make_shared<std::vector<uint8_t> >(std::move(payload));
-	CommDriverResult result = WriteCommDriver(driverHandle, sharedPointer);
-	if (result != RESULT_COMM_NO_ERROR) {
-		wxLogMessage("Demo Plugin, Error sending Plugin Message: %d", result);
-	}
-}
-
-// Parse SignalK updates
-void DemoPlugin::HandleSKUpdate(wxJSONValue& update) {
-	if (update.HasMember("values") && update["values"].IsArray()) {
-		for (int i = 0; i < update["values"].Size(); i++) {
-			wxJSONValue& item = update["values"][i];
-			if (item.HasMember("path") && item.HasMember("value")) {
-				// In this demo plugin, we're only interested in depth
-				if (item["path"].AsString() == "environment.depth.belowSurface") {
-					double waterDepth = item["value"].AsDouble();
-					// Could so something useful with the water depth value, eg shallow water alarm?
-					wxLogMessage("Demo Plugin, Water Depth: %0.2f", waterDepth);
-				}
-			}
-		}
-	}
-}
-
-// Retrieve all waypoints and display a few attributes in a simple message box
-void DemoPlugin::GetAllWaypoints() {
-	wxArrayString waypointGuids = GetWaypointGUIDArray();
-	wxString result = "Name, Latitude, Longitude";
-	PlugIn_Waypoint waypointDetails;
-	for (const auto& waypointGuid : waypointGuids) {
-		GetSingleWaypoint(waypointGuid, &waypointDetails);
-		result.append(wxString::Format("\n%s  %0.2f  %0.2f", waypointDetails.m_MarkName, 
-			waypointDetails.m_lat, waypointDetails.m_lon));
-	}
-	wxMessageBox(result, "Waypoints");
-}
-
-// Retrieve all routes and display a few attributes in a simple message box
-void DemoPlugin::GetAllRoutes() {
-	wxArrayString routeGuids = GetRouteGUIDArray();
-	wxString result = "Name, From, To, No. of Waypoints";
-	for (const auto& routeGuid : routeGuids) {
-		auto routeDetails = GetRoute_Plugin(routeGuid);
-		result.append(wxString::Format("\n%s, %s, %s, %d", routeDetails->m_NameString, 
-			routeDetails->m_StartString, routeDetails->m_EndString, 
-			routeDetails->pWaypointList->size()));
-	}
-	wxMessageBox(result, "Routes");
-}
-
-// Receive SignalK update using observer/listener model
-void DemoPlugin::HandleSignalK(ObservedEvt ev) {
-	// OpenCPN "packages" up the SignalK update, including the self context
-	auto payload = GetSignalkPayload(ev);
-	const auto signalKMessage = *std::static_pointer_cast<const wxJSONValue>(payload);
-	auto errorCount = signalKMessage.ItemAt("ErrorCount");
-	if (errorCount.AsInt() > 0) {
-		wxLogMessage("Demo Plugin, SignalK Error Count: %d", errorCount.AsInt());
-		return;
-	}
-
-	// Retrieve the Self Context and the SignalK Data
-	// Note unlike using Plugin Messaging to receive SignalK updates
-	// OpenCPN determines the self context and adds it to the OpenCPN SignalK payload.
-	wxJSONValue self = signalKMessage.ItemAt("ContextSelf");
-	wxJSONValue root = signalKMessage.ItemAt("Data");
-
-	// Only interested in displaying data for our own vessel
-	if (root.HasMember("context") && root["context"].IsString()) {
-		wxString context = root["context"].AsString();
-			if (context == self.AsString()) {
-			// Parse the data
-			if (root.HasMember("updates") && root["updates"].IsArray()) {
-				wxJSONValue updates = root["updates"];
-				for (int i = 0; i < updates.Size(); i++) {
-					HandleSKUpdate(updates[i]);
-				}
-			}
-		}
-	}
-}
-
-// Drop a waypoint at the current position which has been persisted in the NavMsg listener 
-void DemoPlugin::CreateWaypoint() {
-	PlugIn_Waypoint waypoint;
-	waypoint.m_IsVisible = true;
-	waypoint.m_MarkName = "Demo";
-	waypoint.m_IconName = "Marks-Race-Start";
-	waypoint.m_GUID = GetNewGUID();
-	waypoint.m_lat = currentLatitude;
-	waypoint.m_lon = currentLongitude;
-	AddSingleWaypoint(&waypoint, true);
-}
-
-// Update the existing "Demo" waypoint and add range rings
-void DemoPlugin::ModifyWaypoint() {
-	// First of all, find the the "Demo" waypoint
-	wxArrayString waypointGuids = GetWaypointGUIDArray();
-	PlugIn_Waypoint_ExV2 waypoint;
-	for (auto waypointGUID : waypointGuids) {
-		GetSingleWaypointExV2(waypointGUID, &waypoint);
-		if (waypoint.m_MarkName.CmpNoCase("Demo") == 0) {
-			// Update the range rings, two rings, at a distance of 1Nm, coloured purple
-			waypoint.nrange_rings = 2;
-			waypoint.RangeRingSpace = 1.0;
-			waypoint.RangeRingColor = wxColour(128, 0, 128);
-			if (UpdateSingleWaypointExV2(&waypoint)) {
-				return;
-			}
-			else {
-				wxMessageBox("Error updating Demo waypoint", "Demo Plugin");
-			}
-		}
-	}
-	wxMessageBox("Demo waypoint was not found", "Demo Plugin");
-}
-
-// Add a route
-void DemoPlugin::CreateRoute() {
-	std::unique_ptr route = std::make_unique<PlugIn_Route>();
-	route->m_NameString = "Demo Route";
-	route->m_StartString = "Here";
-	route->m_EndString = "There";
-	route->m_GUID = GetNewGUID();
+	// Calculate the hit test dimensions based on the bitmap and viewport sizes
+	const auto bitmapSize = bitmapMarina.GetSize();
+	const double bitmapHeight =	bitmapSize.GetHeight() * (viewPort.lat_max - viewPort.lat_min) / viewPort.pix_height;
+	const double bitmapWidth = bitmapSize.GetWidth() *	(viewPort.lon_max - viewPort.lon_min) /	viewPort.pix_width;
 	
-	// Add ten waypoints
-	// Note that these are not "stand alone" waypoints, they only exist in the context of 
-	// the route and do not appear in the Route & Mark Manager under the waypoints tab.
-	for (size_t i = 0; i < 10; i++) {
-		PlugIn_Waypoint* waypoint =  new PlugIn_Waypoint();
-		waypoint->m_MarkName = wxString::Format("WP%03d", i);
-		waypoint->m_IconName = "Symbol-Triangle";
-		waypoint->m_GUID = GetNewGUID();
-		waypoint->m_lat = -38.0 + (i * 0.5);
-		waypoint->m_lon = 144.0 + (i * 0.5);
-		route->pWaypointList->Append(waypoint);
-	}
-		
-	if (AddPlugInRoute(route.get(), true)) {
-		wxMessageBox("Created Route " + route->m_NameString, "Demo Plugin");
-	}
-	else {
-		wxMessageBox("Failed to create route", "Demo Plugin");
-	}
-}
+	// Co-ordinates of the hit test.
+	const double top = lat + bitmapHeight;
+	const double bottom = lat - bitmapHeight;
+	const double left = lon - bitmapWidth;
+	const double right = lon + bitmapWidth;
 
-// Reverse the route
-void DemoPlugin::ReverseRoute() {
-	wxArrayString routeGuids = GetRouteGUIDArray();
-	std::unique_ptr<PlugIn_Route> route;
-	for (auto routeGuid : routeGuids) {
-		route = GetRoute_Plugin(routeGuid);
-		if (route->m_NameString.CmpNoCase("Demo Route") == 0) {
-			Plugin_WaypointList* pList;
-			pList = route->pWaypointList;
-			std::vector<PlugIn_Waypoint> waypoints;
-			for (auto it = pList->begin(); it != pList->end(); ++it) {
-				// Copy the waypoints from the route
-				waypoints.push_back(**it);
-			}
-			// Now reverse everything
-			wxString endString = route->m_EndString;
-			route->m_EndString = route->m_StartString;
-			route->m_StartString = endString;
-			// Clear the waypoint list and reverse the order of waypoints
-			route->pWaypointList->Clear();
-			for (auto it = waypoints.rbegin(); it != waypoints.rend(); ++it) {
-				route->pWaypointList->Append(new PlugIn_Waypoint(*it));
-			}
-			if (UpdatePlugInRoute(route.get())) {
-				wxMessageBox("Route " + route->m_NameString + " reversed", "Demo Plugin");
-			}
-			else {
-				wxMessageBox("Failed to reverse route " + route->m_NameString, "Demo Plugin");
-			}
-			return;
+	// If we had a large number of POI's either a quadtree or hash table would improve performance
+	for (auto& it : pointsOfInterest) {
+		if ((it.latitude >= bottom) && (it.latitude <= top) && (it.longitude >= left) && (it.longitude <= right)) {
+				*id = it.id;
+				return true;
 		}
 	}
+	return false;
 }
 
 // Drawing on the Canvas when OpenGL is not being used
-// This simple example just draws a wind arrow centered on the boat
 // Note requires WANTS_OVERLAY_CALLBACK and that OpenCPN is NOT using 
 // OpenGL (hardware graphics acceleration)
 bool DemoPlugin::RenderOverlayMultiCanvas(wxDC& dc, PlugIn_ViewPort* vp,
@@ -920,12 +310,12 @@ bool DemoPlugin::RenderOverlayMultiCanvas(wxDC& dc, PlugIn_ViewPort* vp,
 
 	// Only draw in Legacy Mode, other modes are OVERLAY_OVER_SHIPS, OVERLAY_OVER_UI etc.
 	if (priority != OVERLAY_LEGACY) {
-		wxLogDebug("Demo Plugin, Render error, OpenCPN not in legacy mode, %d", priority);
+		wxLogDebug("Active Captain Plugin, Render error, OpenCPN not in legacy mode, %d", priority);
 		return false;
 	}
 
 	if (!dc.IsOk()) {
-		wxLogDebug("Demo Plugin, Render error, Canvas DC not OK");
+		wxLogDebug("Active Captain Plugin, Render error, Canvas DC not OK");
 		return false;
 	}
 
@@ -934,114 +324,64 @@ bool DemoPlugin::RenderOverlayMultiCanvas(wxDC& dc, PlugIn_ViewPort* vp,
 		return false;
 	}
 
-	// Convert our boat position to screen coordinates
-	wxPoint boat, ring;
-	GetCanvasPixLL(vp, &boat, currentLatitude, currentLongitude);
+	// Pre compute the chart extents, only draw the POI's that are in the viewport.
 
-	// The length of our arrow will be one Nm (which equals 1' of latitude)
-	// Could retrieve the headingPredictor length and draw our lines to the same size
-	GetCanvasPixLL(vp, &ring, currentLatitude + k_LatitudeMinute, currentLongitude);
+	const double south = std::min(vp->lat_min, vp->lat_max);
+	const double north = std::max(vp->lat_min, vp->lat_max);
+	const double west = std::min(vp->lon_min, vp->lon_max);
+	const double east = std::max(vp->lon_min, vp->lon_max);
 
-	// The actual length of the wind arrow (in pixels)
-	const int radius = std::abs(boat.y - ring.y);
-
+	// At present only support one screen
 	if (canvasIndex == 0) {
 
-		// Draw a solid ring and wind angle on the first canvas (rather ugly...)
-		dc.SetPen(*wxRED_PEN);
-		dc.SetBrush(*wxRED_BRUSH);
-		dc.DrawCircle(boat.x, boat.y, radius);
+		// BUG BUG, If the user has panned/zoomed, the vector should be culled otherwise we're checking values that 
+		// will never be rendered. Could always contemplate a quadtree, especially from a performance perspective
+		for (auto& it : pointsOfInterest) {
+			wxPoint wxP;
+			GetCanvasPixLL(vp, &wxP, it.latitude, it.longitude);
 
-		// Only draw the wind arrow, if we actually have a valid wind angle and heading
-		if (!std::isnan(trueHeading) && !std::isnan(apparentWindAngle)) {
+			if (it.latitude >= south &&
+				it.latitude <= north &&
+				it.longitude >= west &&
+				it.longitude <= east) {
 
-			// Note, the below computations should be implemented as reusable functions 
-			// Normalize the wind angle
-			double angle = std::fmod(apparentWindAngle + trueHeading, 360.0);
-			if (angle < 0) {
-				angle += 360.0;
+				switch (it.type) {
+				case Category::Marina:
+					dc.DrawBitmap(bitmapMarina, wxP.x, wxP.y, true);
+					break;
+				case Category::Anchorage:
+					dc.DrawBitmap(bitmapAnchorage, wxP.x, wxP.y, true);
+					break;
+				case Category::Business:
+					dc.DrawBitmap(bitmapBusiness, wxP.x, wxP.y, true);
+					break;
+				case Category::BoatRamp:
+					dc.DrawBitmap(bitmapBoatRamp, wxP.x, wxP.y, true);
+					break;
+				case Category::Bridge:
+					dc.DrawBitmap(bitmapBridge, wxP.x, wxP.y, true);
+					break;
+				case Category::Dam:
+					dc.DrawBitmap(bitmapDam, wxP.x, wxP.y, true);
+					break;
+				case Category::Ferry:
+					dc.DrawBitmap(bitmapFerry, wxP.x, wxP.y, true);
+					break;
+				case Category::Hazard:
+					dc.DrawBitmap(bitmapHazard, wxP.x, wxP.y, true);
+					break;
+				case Category::Inlet:
+					dc.DrawBitmap(bitmapInlet, wxP.x, wxP.y, true);
+					break;
+				case Category::Lock:
+					dc.DrawBitmap(bitmapLock, wxP.x, wxP.y, true);
+					break;
+				default: // Unaware of any POI's that have a different type
+					dc.DrawBitmap(bitmapDefault, wxP.x, wxP.y, true);
+					break;
+				}
 			}
-
-			// Convert to radians and
-			// adjust to the screen cordinates (0 degrees is normally displayed at 3 o'clock)
-			angle -= 90.0;
-			angle = angle * M_PI / 180.0;
-
-			// Generate the points for the wind arrow
-			wxPoint arrow[] = {
-				{int(std::cos(angle) * 10 + boat.x), int(std::sin(angle) * 10 + boat.y)},
-				{int(std::cos(angle + 0.088) * radius + boat.x), int(std::sin(angle + 0.088) * radius + boat.y)},
-				{int(std::cos(angle - 0.088) * radius + boat.x), int(std::sin(angle - 0.088) * radius + boat.y)},
-				{int(std::cos(angle) * 10 + boat.x), int(std::sin(angle) * 10 + boat.y)}
-			};
-
-			// Finally draw the wind arrow
-			dc.SetPen(*wxBLUE_PEN);
-			dc.SetBrush(*wxBLUE_BRUSH);
-			dc.DrawPolygon(std::size(arrow), arrow);
 		}
-	}
-
-	else if (canvasIndex == 1) {
-
-		// On this canvas we'll draw using a Graphics Context
-		wxMemoryDC* memDC = wxDynamicCast(&dc, wxMemoryDC);
-		if (!memDC) {
-			return false;
-		}
-
-		std::unique_ptr<wxGraphicsContext> gc(wxGraphicsContext::Create(*memDC));
-		if (!gc) {
-			return false;
-		}
-
-		// Draw a circle centred on the boat
-		gc->SetPen(*wxBLACK_PEN);
-		// Use a light grey brush with an alpha channel (opacity/transparency)
-		gc->SetBrush(wxColour(100, 100, 100, 50));
-		auto path = gc->CreatePath();
-		path.AddCircle(boat.x, boat.y, radius);
-		gc->FillPath(path);
-
-		// Only draw the wind arrow, if we actually have a valid wind angle and heading
-		if (std::isnan(trueHeading) || std::isnan(apparentWindAngle)) {
-			return true;
-		}
-
-		// Normalize the wind angle
-		double angle = std::fmod(apparentWindAngle + trueHeading, 360.0);
-		if (angle < 0) {
-			angle += 360.0;
-		}
-
-		// Convert to radians and
-		// adjust to the screen cordinates (0 degrees is normally displayed at 3 o'clock)
-		angle -= 90.0;
-		angle = angle * M_PI / 180.0;
-
-		// Demonstrate use of wxGraphicsContext transform, translate, rotate functions
-
-		// Define our arrow's dimensions, tip, bottom right, bottom left
-		wxPoint2DDouble arrow[] = {
-			{0.0, 0.0},
-			{static_cast<double>(radius), 10.0},
-			{static_cast<double>(radius), -10.0}
-		};
-
-		gc->PushState();
-		gc->Translate(boat.x, boat.y);
-		gc->Rotate(angle);
-		gc->SetPen(wxPen(wxColour(0, 100, 0), 1));
-		wxGraphicsGradientStops stops;
-		stops.SetStartColour(wxColour(144, 238, 144));
-		stops.SetEndColour(wxColour(0, 100, 0));
-		gc->SetBrush(gc->CreateLinearGradientBrush(
-			arrow[0].m_x, arrow[0].m_y,
-			arrow[2].m_x, arrow[2].m_y,
-			stops));
-		gc->DrawLines(std::size(arrow), arrow);
-		gc->PopState();
-		gc->Flush();
 	}
 	return true;
 }
@@ -1053,138 +393,476 @@ bool DemoPlugin::RenderGLOverlayMultiCanvas(wxGLContext* pcontext, PlugIn_ViewPo
 
 	// Draw "over" the chart, other modes are OVERLAY_LEGACY, OVERLAY_OVER_SHIPS, OVERLAY_OVER_UI etc.
 	if (priority != OVERLAY_OVER_EMBOSS) {
-		wxLogDebug("Demo Plugin, OpenGL Render error, OpenCPN not in emboss mode, %d", priority);
+		wxLogDebug("Active Captain Plugin, OpenGL Render error, OpenCPN not in emboss mode, %d", priority);
 		return false;
 	}
 
 	if (!pcontext->IsOK()) {
-		wxLogDebug("Demo Plugin, OpenGL Render error, Canvas DC not OK");
+		wxLogDebug("Active Captain Plugin, OpenGL Render error, Canvas DC not OK");
 		return false;
 	}
 
-	if (canvasIndex != 0) {
-		wxLogDebug("Demo Plugin, OpenGL Render error, Wrong canvas: %d", canvasIndex);
-		return false;
-	}
+	// At present only support one screen
+	if (canvasIndex == 0) {
 
-	// The pluginDC helper class that abstracts wxGLCanvas methods It is 
-	// "universal" in that it support both OpenGL (wxGLCanvas) and non OpenGL (wxDC)
-	std::unique_ptr<piDC> demoGraphicsContext = std::make_unique<piDC>(pcontext);
-	
-	// Draw an annular ring centred around the boat with apparent wind direction indication
-	demoGraphicsContext->SetBrush(wxColour(100, 100, 100, 50));
-	demoGraphicsContext->SetPen(*wxBLACK_PEN);
+		const double south = std::min(vp->lat_min, vp->lat_max);
+		const double north = std::max(vp->lat_min, vp->lat_max);
+		const double west = std::min(vp->lon_min, vp->lon_max);
+		const double east = std::max(vp->lon_min, vp->lon_max);
 
-	// Convert our current position to screen co-ordinates
-	wxPoint boatLocation, ringLocation;
-	GetCanvasPixLL(vp, &boatLocation, currentLatitude, currentLongitude);
+		// The pluginDC helper class that abstracts wxGLCanvas methods It is  "universal" in that
+		// it support both OpenGL (wxGLCanvas) and non OpenGL (wxDC).
+		std::unique_ptr<piDC> pluginDC = std::make_unique<piDC>(pcontext);
 
-	// Draw a transparent circle around the boat
-	double oneMinuteAway = currentLatitude + (k_LatitudeMinute);
-	GetCanvasPixLL(vp, &ringLocation, oneMinuteAway, currentLongitude);
+		for (auto& it : pointsOfInterest) {
+			wxPoint wxP;
+			GetCanvasPixLL(vp, &wxP, it.latitude, it.longitude);
 
-	const int radius = std::abs(boatLocation.y - ringLocation.y);
-	demoGraphicsContext->StrokeCircle(boatLocation.x, boatLocation.y, radius);
+			if (it.latitude >= south &&
+				it.latitude <= north &&
+				it.longitude >= west &&
+				it.longitude <= east) {
 
-	// Draw apparent wind angle centred around the boat
-	if (std::isnan(apparentWindAngle) || std::isnan(magneticHeading)) {
-		return true;
-	}
-
-	double drawnAngle = apparentWindAngle + magneticHeading;
-
-	// Normalize Wind Angle, remebering 3'oclock on the screen is 0 degrees
-	drawnAngle = std::fmod(drawnAngle + 360.0, 360.0);
-	drawnAngle -= 90.0;
-
-	constexpr double arrowHeadOffset = 0.088;
-	constexpr double arrowInnerLength = 10.0;
-
-	const double radians = drawnAngle * M_PI / 180.0;
-
-	// Trigonometry calculations for drawing the wind arrow
-	const double cosA = std::cos(radians);
-	const double sinA = std::sin(radians);
-	const double cosPlus = std::cos(radians + arrowHeadOffset);
-	const double sinPlus = std::sin(radians + arrowHeadOffset);
-	const double cosMinus = std::cos(radians - arrowHeadOffset);
-	const double sinMinus = std::sin(radians - arrowHeadOffset);
-
-	wxPoint windArrow[4] = {
-		{
-			static_cast<int>(cosA * arrowInnerLength + boatLocation.x),
-			static_cast<int>(sinA * arrowInnerLength + boatLocation.y)
-		},
-		{
-			static_cast<int>(cosPlus * radius + boatLocation.x),
-			static_cast<int>(sinPlus * radius + boatLocation.y)
-		},
-		{
-			static_cast<int>(cosMinus * radius + boatLocation.x),
-			static_cast<int>(sinMinus * radius + boatLocation.y)
-		},
-		{
-			static_cast<int>(cosA * arrowInnerLength + boatLocation.x),
-			static_cast<int>(sinA * arrowInnerLength + boatLocation.y)
+				switch (it.type) {
+				case Category::Marina:
+					pluginDC->DrawBitmap(bitmapMarina, wxP.x, wxP.y, true);
+					break;
+				case Category::Anchorage:
+					pluginDC->DrawBitmap(bitmapAnchorage, wxP.x, wxP.y, true);
+					break;
+				case Category::Business:
+					pluginDC->DrawBitmap(bitmapBusiness, wxP.x, wxP.y, true);
+					break;
+				case Category::BoatRamp:
+					pluginDC->DrawBitmap(bitmapBoatRamp, wxP.x, wxP.y, true);
+					break;
+				case Category::Bridge:
+					pluginDC->DrawBitmap(bitmapBridge, wxP.x, wxP.y, true);
+					break;
+				case Category::Dam:
+					pluginDC->DrawBitmap(bitmapDam, wxP.x, wxP.y, true);
+					break;
+				case Category::Ferry:
+					pluginDC->DrawBitmap(bitmapFerry, wxP.x, wxP.y, true);
+					break;
+				case Category::Hazard:
+					pluginDC->DrawBitmap(bitmapHazard, wxP.x, wxP.y, true);
+					break;
+				case Category::Inlet:
+					pluginDC->DrawBitmap(bitmapInlet, wxP.x, wxP.y, true);
+					break;
+				case Category::Lock:
+					pluginDC->DrawBitmap(bitmapLock, wxP.x, wxP.y, true);
+					break;
+				default:
+					pluginDC->DrawBitmap(bitmapDefault, wxP.x, wxP.y, true);
+					break;
+				}
+			}
 		}
-	};
-
-	// Lambda helper function for setting pen and brush colours
-	auto SetColor = [&](const wxColor& c) {
-		demoGraphicsContext->SetPen(wxPen(c, 1, wxPENSTYLE_SOLID));
-		demoGraphicsContext->SetBrush(c);
-		};
-
-	// Use different colours to indicate wind speed ranges
-	if (apparentWindSpeed < 10) {
-		SetColor(wxColor(255, 255, 155));
 	}
-	else if (apparentWindSpeed < 15) {
-		SetColor(wxColor(0, 255, 0));
-	}
-	else if (apparentWindSpeed < 20) {
-		SetColor(wxColor(0, 255, 255));
-	}
-	else if (apparentWindSpeed < 25) {
-		SetColor(wxColor(0, 0, 255));
-	}
-	else {
-		SetColor(wxColor(255, 155, 128));
-	}
-
-	// Draw the wind arrow
-	demoGraphicsContext->DrawPolygonTessellated(WXSIZEOF(windArrow), windArrow);
-	// Draw the wind speed label
-	wxFont textFont = wxFont(wxFontInfo(16).Family(wxFONTFAMILY_SWISS));
-	demoGraphicsContext->SetFont(textFont);
-	wxCoord textWidth, textHeight;
-	wxString label = wxString::Format("%.1f", apparentWindSpeed);
-
-	demoGraphicsContext->GetTextExtent(label, &textWidth, &textHeight);
-	
-	// Note, could position the label better
-	demoGraphicsContext->DrawText(label, static_cast<int>(cosA* arrowInnerLength + boatLocation.x) - (textWidth / 2),
-		static_cast<int>(sinA* arrowInnerLength + boatLocation.y));
-	
 	return true;
 }
 
+// Helper functions to map enums to an int & vice-versa for Point of Interest types (marina, anchorage etc.)
+Category DemoPlugin::StringToCategory(const wxString& s) {
+	for (const auto& c : categories) {
+		if (s == c.name)
+			return c.category;
+	}
+
+	return Category::Default;
+}
+
+wxString DemoPlugin::CategoryToString(const Category& c) {
+	for (const auto& entry : categories) {
+		if (entry.category == c)
+			return entry.name;
+	}
+	return "Unknown";
+}
+
+
+// Retrieve the list of selected POI's for the current viewport
+bool DemoPlugin::RequestGarminPointOfInterest(void) {
+
+	if (!OCPN_isOnline()) {
+		return false;
+	}
+
+	wxString url = "https://activecaptain.garmin.com/community/api/v1/points-of-interest/bbox";
+	
+	wxJSONValue bbox;
+	wxJSONWriter writer;
+	wxString jsonBody;
+
+	// JSON text body
+	bbox["north"] = viewPort.lat_max;
+	bbox["south"] = viewPort.lat_min;
+	bbox["east"] = viewPort.lon_max;
+	bbox["west"] = viewPort.lon_min;
+	bbox["zoomLevel"] = 17;
+	
+	wxString poiTypes;
+
+	auto appendItem = [&poiTypes](const wxString& item)
+		{
+			if (!poiTypes.empty()) {
+				poiTypes += ", ";
+			}
+			poiTypes += item;
+		};
+
+	// Select which Points of Interest to fetch
+	if (g_showMarina) {
+		appendItem(wxString("Marina"));
+	}
+	if (g_showAnchorage) {
+		appendItem(wxString("Anchorage"));
+	}
+	if (g_showHazard) {
+		appendItem(wxString("Hazard"));
+	}
+	if (g_showBusiness) {
+		appendItem(wxString("Business"));
+	}
+	if (g_showBoatRamp) {
+		appendItem(wxString("BoatRamp"));
+	}
+	if (g_showBridge) {
+		appendItem(wxString("Bridge"));
+	}
+	if (g_showDam) {
+		appendItem(wxString("Dam"));
+	}
+	if (g_showFerry) {
+		appendItem(wxString("Ferry"));
+	}
+	if (g_showInlet) {
+		appendItem(wxString("Inlet"));
+	}
+	if (g_showDam) {
+		appendItem(wxString("Lock"));
+	}
+
+	bbox["poiTypes"] = poiTypes;
+	
+	// Construct the JSON text
+	writer.Write(bbox, jsonBody);
+
+	// BBUG BUG, This is an asynch call?
+	bool result = false;
+	// Create the request object
+	wxWebRequest request = wxWebSession::GetDefault().CreateRequest(this, url);
+
+	// Specify the Post method
+	request.SetMethod("POST");
+	// Headers
+	request.SetHeader("User-Agent", "OpenCPN Active Captain Plugin");
+	request.SetHeader("Content-Type", "application/json");
+	request.SetHeader("Accept", "application/json");
+
+	// Finally the data itself.
+	request.SetData(jsonBody, "application/json");
+
+	if (!request.IsOk()) {
+		wxLogError("Active Captain Plugin, Unexepected Web Request Error");
+		return false;
+	}
+
+	// The web request event handler (just a lambda function)
+	Bind(wxEVT_WEBREQUEST_STATE, [this, &result](wxWebRequestEvent& evt) {
+		switch (evt.GetState()) {
+		case wxWebRequest::State_Completed:
+			SavePointOfInterest(evt.GetResponse().AsString());
+			result = true;
+			break;
+
+		case wxWebRequest::State_Failed:
+			wxMessageBox(wxString::Format("Failed to send Request to Active Captain %s",evt.GetErrorDescription()), 
+				"Active Captain Plugin");
+			result = false;
+			break;
+			// Possibly handle	wxWebRequest::State_Unauthorized etc.
+		}
+		});
+
+	// Start the request
+	request.Start();
+	
+	return result;
+}
+
+// Request summary information for the selected point of interest
+bool DemoPlugin::RequestGarminPointOfInterest(const wxString& id) {
+
+	if (id.IsEmpty()) {
+		return false;
+	}
+
+	wxString url = wxString::Format("https://activecaptain.garmin.com/community/api/v1/points-of-interest/%s/summary", id);
+
+	bool result = false;
+	// Create the request object
+	wxWebRequest request = wxWebSession::GetDefault().CreateRequest(this, url);
+
+	// Specify the Get method
+	request.SetMethod("GET");
+	// Headers
+	request.SetHeader("User-Agent", "OpenCPN Active Captain Plugin");
+	request.SetHeader("Content-Type", "application/json");
+	request.SetHeader("Accept", "application/json");
+
+	if (!request.IsOk()) {
+		wxLogError("Active Captain Plugin, Unexepected Web Request Error");
+		return false;
+	}
+
+	// The web request event handler (just a lambda function)
+	Bind(wxEVT_WEBREQUEST_STATE, [this, &result](wxWebRequestEvent& evt) {
+		switch (evt.GetState()) {
+		case wxWebRequest::State_Completed:
+			DisplayPointOfInterest(evt.GetResponse().AsString());
+			result = true;
+			break;
+
+		case wxWebRequest::State_Failed:
+			wxMessageBox(wxString::Format("Failed to send Request to Active Captain %s", evt.GetErrorDescription()),
+				"Active Captain Plugin");
+			result = false;
+			break;
+			// Possibly handle	other errors; wxWebRequest::State_Unauthorized etc.
+		}
+		});
+
+	// Start the request
+	request.Start();
+	
+	return result;
+}
+
+// Persist Active Captain Points of Interest
+void DemoPlugin::SavePointOfInterest(const wxString& response) {
+
+	wxJSONReader reader;
+	wxJSONValue root;
+	ActiveCaptainPOI pointOfInterest;
+
+	if (reader.Parse(response, &root) > 0) {
+		wxLogMessage("Active Captain Plugin, Json parser error(s) retrieving points of interest: %s");
+		for (auto it : reader.GetErrors()) {
+			wxLogMessage("Active Captain Plugin, Json parser error: %s", it);
+		}
+		return;
+	}
+	else {
+		wxJSONValue pois = root["pointsOfInterest"];
+		for (int i = 0; i < pois.Size(); i++) {
+			wxJSONValue& poi = pois[i];
+			pointOfInterest.id = poi["id"].AsString();
+			pointOfInterest.name = poi["name"].AsString();
+			pointOfInterest.type = StringToCategory(poi["poiType"].AsString());
+			pointOfInterest.latitude = poi["mapLocation"]["latitude"].AsDouble();
+			pointOfInterest.longitude = poi["mapLocation"]["longitude"].AsDouble();
+
+			if (!IsDuplicate(pointOfInterest)) {
+				pointsOfInterest.push_back(pointOfInterest);
+			}
+		}
+	}
+	// Just for the hell of it, log the number of POI's. May be helpful to determine if a Quadtree is required
+	wxLogMessage("Active Captain Plugin, Number of POI's: %d", pointsOfInterest.size());
+}
+
+// Avoid adding duplicated objects
+bool DemoPlugin::IsDuplicate(ActiveCaptainPOI& poi) {
+	for (auto& it : pointsOfInterest) {
+		if (it.id == poi.id) {
+			return true;
+		}
+	}
+	return false;
+}
+
+// Display Active Captain Point of Interest Details
+void DemoPlugin::DisplayPointOfInterest(const wxString& response) {
+
+	// Need to handle/display this kind of data. Dynamically add tabs to the dialog?
+
+	/*
+	* 
+	* 
+	
+	{
+	  "amenity": {
+		"bar": "Unknown",
+		"boatRamp": "Unknown",
+		"cellReception": "Unknown",
+		"courtesyCar": "Unknown",
+		"dateLastModified": "2019-03-13T15:05:45.204",
+		"id": 531966,
+		"laundry": "Unknown",
+		"lodging": "Unknown",
+		"pets": "Unknown",
+		"restaurant": "Unknown",
+		"restroom": "Unknown",
+		"shower": "Unknown",
+		"transportation": "Unknown",
+		"trash": "Unknown",
+		"water": "Unknown",
+		"wifi": "Unknown"
+	  },
+	  "business": {
+		"cash": "Unknown",
+		"check": "Unknown",
+		"credit": "Unknown",
+		"dateLastModified": "2019-03-13T15:05:45.719",
+		"id": 531966,
+		"public": "Unknown",
+		"seasonal": "Unknown",
+		"notes": []
+	  },
+	  "contact": {
+		"id": 531966,
+		"dateLastModified": "2019-03-13T15:05:45.141",
+		"vhfChannel": "",
+		"addressStreet": "88 BARWON HEADS ROAD",
+		"addressCity": "BELMONT",
+		"addressZip": "3216",
+		"addressState": "VIC",
+		"addressCountry": "Austraila",
+		"website": "http://www.bargainboatbits.com.au",
+		"afterHourContact": "",
+		"phone": "",
+		"email": ""
+	  },
+	  "fuel": {
+		"currency": "UNK",
+		"dateLastModified": "2019-03-13T15:05:45.188",
+		"diesel": "Unknown",
+		"ethanolFree": "Unknown",
+		"gas": "Unknown",
+		"id": 531966,
+		"propane": "Unknown",
+		"electric": "Unknown",
+		"volumeUnits": "Gallon",
+		"distanceUnit": "Meter"
+	  },
+	  "retail": {
+		"dateLastModified": "2019-03-13T15:05:45.251",
+		"fishingSupplies": "Unknown",
+		"grocery": "Unknown",
+		"hardware": "Unknown",
+		"ice": "Unknown",
+		"marineRetail": "Yes",
+		"id": 531966
+	  },
+	  "services": {
+		"boatBrokers": "Unknown",
+		"bottomPainting": "Unknown",
+		"canvasAndUpholstery": "Unknown",
+		"carpentry": "Unknown",
+		"charter": "Unknown",
+		"dateLastModified": "2019-03-13T15:05:45.266",
+		"electronics": "Unknown",
+		"fiberglass": "Unknown",
+		"haulOut": "Unknown",
+		"id": 531966,
+		"marineHvac": "Unknown",
+		"mechanical": "Unknown",
+		"paint": "Unknown",
+		"plumbing": "Unknown",
+		"propellerRepair": "Unknown",
+		"pumpOut": "Unknown",
+		"repair": "Unknown",
+		"repairDieselEngines": "Unknown",
+		"repairGasEngines": "Unknown",
+		"rescueAndSalvage": "Unknown",
+		"sailsAndRigging": "Unknown",
+		"storage": "Unknown",
+		"surveyors": "Unknown",
+		"towing": "Unknown",
+		"washAndWax": "Unknown",
+		"waterTaxi": "Unknown",
+		"welding": "Unknown"
+	  },
+	  "pointOfInterest": {
+		"dateLastModified": "2019-04-13T16:00:01.521",
+		"id": 531966,
+		"mapLocation": {
+		  "latitude": -38.1783539883777,
+		  "longitude": 144.35342341661456
+		},
+		"name": "BARGAIN BOAT BITS",
+		"poiType": "Business"
+	  }
+	}
+
+
+	* 
+	* 
+	*/
+
+	wxJSONReader reader;
+	wxJSONValue root;
+	ActiveCaptainPOI poi;
+	
+	if (reader.Parse(response, &root) > 0) {
+		wxLogMessage("Active Captain Plugin, Json parser error(s) retrieving points of interest: %s");
+		for (auto it : reader.GetErrors()) {
+			wxLogMessage("Active Captain Plugin, Json parser error: %s", it);
+		}
+		return;
+	}
+	else {
+		poi.id = root["pointOfInterest"]["id"].AsString();
+		poi.name = root["pointOfInterest"]["name"].AsString();
+		poi.type = StringToCategory(root["pointOfInterest"]["poiType"].AsString());
+		poi.latitude = root["pointOfInterest"]["mapLocation"]["latitude"].AsDouble();
+		poi.longitude = root["pointOfInterest"]["mapLocation"]["longitude"].AsDouble();
+		if (root["pointOfInterest"].HasMember("notes") && root["pointOfInterest"]["notes"].IsArray() 
+			&& root["pointOfInterest"]["notes"].Size() == 1) {
+			poi.notes = root["pointOfInterest"]["notes"][0]["value"].AsString();
+		}
+
+		std::unique_ptr<DemoActiveCaptain> poiDialog = std::make_unique<DemoActiveCaptain>(poi, GetOCPNCanvasWindow(), wxID_ANY);
+		poiDialog->ShowModal();
+		
+	}
+}
+
+// Plugin Settings determine what Points of Interest to retrieve
 void DemoPlugin::LoadSettings() {
 	wxFileConfig* configSettings = GetOCPNConfigObject();
 	if (configSettings) {
-		configSettings->SetPath("/PlugIns/DemoPlugin");
-		configSettings->Read("A_Boolean_Value", &g_someBooleanValue, false);
-		configSettings->Read("An_Integer_Value", &g_someIntegerValue, 0);
-		configSettings->Read("A_String_Value", &g_someStringValue, wxEmptyString);
+		configSettings->SetPath("/PlugIns/ActiveCaptainPlugin");
+		configSettings->Read("Marina", &g_showMarina, false);
+		configSettings->Read("Anchorage", &g_showAnchorage, false);
+		configSettings->Read("Hazard", &g_showHazard, false);
+		configSettings->Read("Business", &g_showBusiness, false);
+		configSettings->Read("BoatRamp", &g_showBoatRamp, false);
+		configSettings->Read("Bridge", &g_showBridge, false);
+		configSettings->Read("Dam", &g_showDam, false);
+		configSettings->Read("Ferry", &g_showFerry, false);
+		configSettings->Read("Inlet", &g_showInlet, false);
+		configSettings->Read("Lock", &g_showLock, false);
 	}
 }
+
 
 void DemoPlugin::SaveSettings() {
 	wxFileConfig* configSettings = GetOCPNConfigObject();
 	if (configSettings) {
-		configSettings->SetPath("/PlugIns/DemoPlugin");
-		configSettings->Write("A_Boolean_Value", g_someBooleanValue);
-		configSettings->Write("An_Integer_Value", g_someIntegerValue);
-		configSettings->Write("A_String_Value", g_someStringValue);
+		configSettings->SetPath("/PlugIns/ActiveCaptainPlugin");
+		configSettings->Write("Marina", g_showMarina);
+		configSettings->Write("Anchorage", g_showAnchorage);
+		configSettings->Write("Hazard", g_showHazard);
+		configSettings->Write("Business", g_showBusiness);
+		configSettings->Write("BoatRamp", g_showBoatRamp);
+		configSettings->Write("Bridge", g_showBridge);
+		configSettings->Write("Dam", g_showDam);
+		configSettings->Write("Ferry", g_showFerry);
+		configSettings->Write("Inlet", g_showInlet);
+		configSettings->Write("Lock", g_showLock);
 	}
 }

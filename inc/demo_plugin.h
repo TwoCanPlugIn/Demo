@@ -32,6 +32,7 @@
 #include <wx/fileconf.h>
 #include <wx/graphics.h>
 #include <wx/glcanvas.h>
+#include <wx/webrequest.h>
 
 // Defines version numbers, names etc. for this plugin
 // This is automagically constructed via config.h.in from CMakeLists.txt
@@ -39,12 +40,6 @@
 
 // OpenCPN Plugin header
 #include "ocpn_plugin.h"
-
-// Bundled OpenCPN NMEA 0183 libraries
-#include "nmea0183.h"
-
-// Bundled OpenCPN NMEA 2000 libraries
-#include "N2KParser.h"
 
 // Bundled OpenCPN JSON libraries
 #include "wx/json_defs.h"
@@ -54,6 +49,20 @@
 
 // Bundled OpenCPN Device Context layer that supports both OpenGL and non OpenGL
 #include "pidc.h"
+
+#include "demo_globals.h"
+
+// Implements a wxWizard dialog to configure the plugin's initial settings
+#include "demo_wizard.h"
+
+// Implements the toolbox page to demonstrate modifying settings from the Toobox page
+#include "demo_toolbox.h"
+
+// Implements a dialog to demonstrate modifying settings from the Plugin Preferences option
+#include "demo_settings.h"
+
+// Dialog to display Active Captain POI details
+#include "demo_activecaptain.h"
 
 class DemoPlugin : public opencpn_plugin_120, public wxEvtHandler {
 public:
@@ -76,122 +85,47 @@ public:
 	wxString GetLongDescription() override;
 	wxBitmap* GetPlugInBitmap() override;
 	void SetDefaults(void) override;
-	void SetupToolboxPanel(int page_sel, wxNotebook* pnotebook) override;
 	void OnCloseToolboxPanel(int page_sel, int ok_apply_cancel) override;
 	void OnSetupOptions(void) override;
 	void ShowPreferencesDialog(wxWindow* parent) override;
 	void OnContextMenuItemCallback(int id) override;
-	void OnContextMenuItemCallbackExt(int id, std::string obj_ident, std::string obj_type, double lat, double lon) override;
 	void OnToolbarToolCallback(int id) override;
-	void SetPositionFixEx(PlugIn_Position_Fix_Ex& pfix) override;
-	void SetNMEASentence(wxString& sentence) override;
-	void LateInit(void) override;
-	void SetPluginMessage(wxString& message_id, wxString& message_body) override;
 	bool RenderOverlayMultiCanvas(wxDC& dc, PlugIn_ViewPort* vp, int canvasIndex, int priority) override;
 	bool RenderGLOverlayMultiCanvas(wxGLContext* pcontext, PlugIn_ViewPort* vp,
 		int canvasIndex, int priority) override;
+	void SetCurrentViewPort(PlugIn_ViewPort& vp) override;
+	void SetCursorLatLon(double lat, double lon) override;
+	bool MouseEventHook(wxMouseEvent& event) override;
 
 private:
+	// Save and Load configuration Settings
 	void LoadSettings();
 	void SaveSettings();
 
-	void GetAllWaypoints();
-	void GetAllRoutes();
-	void CreateWaypoint();
-	void ModifyWaypoint();
-	void CreateRoute();
-	void ReverseRoute();
-
 	// Context Menu Id's
-	int demoContextMenuId;
-	int demoAISContextMenuId;
+	int garminContextMenuId;
 	
 	// Toolbar button Id & state
-	int demoToolbarId;
+	int garminToolBarId;
 	bool isToolbarActive;
-
-	// Current position and heading
-	double currentLatitude;
-	double currentLongitude;
-	double trueHeading;
-	double magneticHeading;
 
 	// Chart Viewport (scale, chart extents etc.)
 	PlugIn_ViewPort viewPort;
 
-	// Wind angle and speed
-	double apparentWindAngle;
-	double apparentWindSpeed;
-	double trueWindAngle;
-	double trueWindSpeed;
-	double trueWindDirection;
+	// Determine if the cursor is over a point of interest;
+	wxString pointOfInterestId;
+	bool IsUnderCursor(const double lat, const double lon, wxString* id);
 
-	// Speed Through Water
-	double boatSpeed;
+	// Garmin Active Captain Points Of Interest(s) related functions
+	bool RequestGarminPointOfInterest(void);
+	bool RequestGarminPointOfInterest(const wxString& id);
+	void SavePointOfInterest(const wxString& response);
+	bool IsDuplicate(ActiveCaptainPOI& poi);
+	void DisplayPointOfInterest(const wxString& reponse);
+	std::vector<ActiveCaptainPOI> pointsOfInterest;
+	Category StringToCategory(const wxString& s);
+	wxString CategoryToString(const Category& c);
 
-	// Calculate True Wind
-	void CalculateTrueWind(void);
-
-	// Generate NMEA 0183 MWV Sentence for True Wind Angle
-	wxString FormatTrueWindSentence(void);
-
-	// Generate NMEA 2000 PGN 130306 message for True Wind Angle
-	std::vector<uint8_t> FormatTrueWindMessage(void);
-
-	// Function to parse NMEA0183 MWV sentences
-	void ParseWind(NMEA0183* nmea0183Sentence);
-
-	// Helper function to find a required connection
-	std::string FindOutboundConnection(const std::string& connectionType);
-
-	// Transmit NMEA 0183 data using observer/listener model
-	// An interface for a NMEA 0183 connection
-	DriverHandle nmea0183Driver;
-	void SendNMEA0183(const std::string& driverHandle, const std::string& sentence);
-
-	// Transmit NMEA 2000 data using observer/listener model
-	// An interface for a NMEA 2000 connection
-	DriverHandle nmea2000Driver;
-	void SendNMEA2000(const std::string& driverHandle, const unsigned char& destination, 
-		const unsigned char& priority,	const unsigned int pgn,	std::vector<uint8_t>& payload);
-
-	// Transmit Plugin Messages using observer/listener model
-	// The internal interface for Plugin Messsaging
-	DriverHandle messagingDriver;
-	void SendJSONMessage(const std::string& driverHandle, const std::string& message);
-
-	// Generate JSON message for True Wind Angle
-	wxString FormatTrueWindJSON(void);
-
-	// Parse SignalK update messages
-	wxString selfURN;
-	void HandleSKUpdate(wxJSONValue& update);
-
-	// New Observer Listener model handlers
-	
-	// Used instead of SetPositionFix callback API
-	void HandleNavData(ObservedEvt ev);
-	std::shared_ptr<ObservableListener> listener_nav;
-
-	// NMEA 0183 VHW Boat speed
-	void HandleVHW(ObservedEvt ev);
-	std::shared_ptr<ObservableListener> listener_vhw;
-
-	// NMEA 2000 Boat speed
-	void HandleN2K_128259(ObservedEvt ev);
-	std::shared_ptr<ObservableListener> listener_128259;
-
-	// NMEA 2000 Wind Speed
-	void HandleN2K_130306(ObservedEvt ev);
-	std::shared_ptr<ObservableListener> listener_130306;
-
-	// OpenCPN Plugin Messaging
-	void HandleMsg_RouteActivated(ObservedEvt ev);
-	std::shared_ptr<ObservableListener> listener_route;
-
-	// OpenCPN SignalK
-	void HandleSignalK(ObservedEvt ev);
-	std::shared_ptr<ObservableListener> listener_signalk;
 };
 
 #endif 

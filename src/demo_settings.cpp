@@ -22,7 +22,7 @@
 // Date: 6/1/2026
 // Version History: 
 // 1.0 Initial Release
-//
+// 1.0.1, 28/04/2026 - Updated for Active Captain POC
 
 #include "demo_settings.h"
 
@@ -35,37 +35,38 @@ DemoSettings::~DemoSettings() {
 }
 
 void DemoSettings::OnInit(wxInitDialogEvent& event) {
-	// Save the original settings in case user changes values, hits apply, but then cancels...
-	originalBooleanValue = g_someBooleanValue;
-	originalIntegerValue = g_someIntegerValue;
-	originalStringValue = g_someStringValue;
 
-	checkBoxBoolean->SetValue(g_someBooleanValue);
-	sliderInteger->SetValue(g_someIntegerValue);
-	textString->SetValue(g_someStringValue);
-
+	checkMarina->SetValue(g_showMarina);
+	checkAnchorage->SetValue(g_showAnchorage);
+	checkHazard->SetValue(g_showHazard);
+	checkBusiness->SetValue(g_showBusiness);
+	checkBoatRamp->SetValue(g_showBoatRamp);
+	checkBridge->SetValue(g_showBridge);
+	checkDam->SetValue(g_showDam);
+	checkFerry->SetValue(g_showFerry);
+	checkLock->SetValue(g_showLock);
+	bitmapGarmin->SetBitmap(pluginBitmap);
+	labelDisclaimer->SetLabel("Active Captain\xae and Garmin\xae are registered trademarks of Garmin Ltd.\nThis plugin is not developed, endorsed or supported by Garmin.");
+	SetMinSize(wxSize(300, 400));
 	Layout();
 	Fit();
+	CenterOnParent();
 
 }
 
 void DemoSettings::OnOK(wxCommandEvent& event) {
-	g_someBooleanValue = checkBoxBoolean->IsChecked();
-	g_someIntegerValue = sliderInteger->GetValue();
-	g_someStringValue = textString->GetValue();
+	g_showMarina = checkMarina->IsChecked();
+	g_showAnchorage = checkAnchorage->IsChecked();
+	g_showHazard = checkHazard->IsChecked();
+	g_showBusiness = checkBusiness->IsChecked();
+	g_showBoatRamp = checkBoatRamp->IsChecked();
+	g_showBridge = checkBridge->IsChecked();
+	g_showDam = checkDam->IsChecked();
+	g_showFerry = checkFerry->IsChecked();
+	g_showLock = checkLock->IsChecked();
 	EndModal(wxID_OK);
 }
 
 void DemoSettings::OnCancel(wxCommandEvent& event) {
-	// Restore the original settings
-	g_someBooleanValue = originalBooleanValue;
-	g_someIntegerValue = originalIntegerValue;
-	g_someStringValue = originalStringValue;
 	EndModal(wxID_CANCEL);
-}
-
-void DemoSettings::OnApply(wxCommandEvent& event) {
-	g_someBooleanValue = checkBoxBoolean->IsChecked();
-	g_someIntegerValue = sliderInteger->GetValue();
-	g_someStringValue = textString->GetValue();
 }

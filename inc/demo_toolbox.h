@@ -36,10 +36,7 @@ public:
 	~DemoToolbox();
 	
 protected:
-	// Overridden methods from the base class
-	void OnCheckBoolean(wxCommandEvent& event);
-	void OnSliderChanged(wxScrollEvent& event);
-	void OnTextChanged(wxCommandEvent& event);
+	
 
 private:
 };

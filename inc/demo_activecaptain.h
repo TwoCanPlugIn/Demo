@@ -15,8 +15,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the Demo plugin for OpenCPN. If not, see <https://www.gnu.org/licenses/>.
 
-#ifndef DEMO_SETTINGS_H
-#define DEMO_SETTINGS_H
+#ifndef DEMO_POI_H
+#define DEMO_POI_H
 
 // wxWidgets Precompiled Headers
 #include "wx/wxprec.h"
@@ -31,19 +31,21 @@
 
 #include "demo_globals.h"
 
-class DemoSettings : public DemoSettingsBase {
+#include "ocpn_plugin.h"
+
+class DemoActiveCaptain : public DemoActiveCaptainBase {
 
 public:
-	DemoSettings(wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Active Captain Plugin Preferences"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxDEFAULT_DIALOG_STYLE);
-	~DemoSettings();
+	DemoActiveCaptain(const ActiveCaptainPOI& poiDetails, wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Active Captain Point of Interest"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxDEFAULT_DIALOG_STYLE);
+	~DemoActiveCaptain();
 
 protected:
 	// Overridden methods from the base class
 	void OnInit(wxInitDialogEvent& event) override;
 	void OnOK(wxCommandEvent& event) override;
-	void OnCancel(wxCommandEvent& event) override;
 
 private:
+	ActiveCaptainPOI poi;
 	
 };
 

@@ -22,6 +22,7 @@
 // Date: 10/01/2026
 // Version History: 
 // 1.0 Initial Release
+// 1.0.1, 28/04/2026 - Updated for Active Captain POC
 
 #include "demo_wizard.h"
 
@@ -35,21 +36,34 @@ DemoWizard::~DemoWizard() {
 }
 
 void DemoWizard::OnInit(wxInitDialogEvent& event) {
-	checkBoxBoolean->SetValue(false);
-	sliderInteger->SetValue(50);
-	textString->SetValue("Demo Plugin");
+	
+	checkMarina->SetValue(false);
+	checkAnchorage->SetValue(false);
+	checkHazard->SetValue(false);
+	checkBusiness->SetValue(false);
+	checkBoatRamp->SetValue(false);
+	checkBridge->SetValue(false);
+	checkDam->SetValue(false);
+	checkFerry->SetValue(false);
+	checkLock->SetValue(false);
+	bitmapGarmin->SetBitmap(pluginBitmap);
+	labelDisclaimer->SetLabel("Active Captain\xae and Garmin\xae are registered trademarks of Garmin Ltd.\nThis plugin is not developed, endorsed or supported by Garmin.");
 	Layout();
 	Fit();
 }
 
 void DemoWizard::OnCancel(wxWizardEvent& event) {
-	g_someBooleanValue = false;
-	g_someIntegerValue = 0;
-	g_someStringValue = wxEmptyString;
+	
 }
 
 void DemoWizard::OnFinished(wxWizardEvent& event) {
-	g_someBooleanValue = checkBoxBoolean->IsChecked();
-	g_someIntegerValue = sliderInteger->GetValue();
-	g_someStringValue = textString->GetValue();
+	g_showMarina = checkMarina->IsChecked();
+	g_showAnchorage = checkAnchorage->IsChecked();
+	g_showHazard = checkHazard->IsChecked();
+	g_showBusiness = checkBusiness->IsChecked();
+	g_showBoatRamp = checkBoatRamp->IsChecked();
+	g_showBridge = checkBridge->IsChecked();
+	g_showDam = checkDam->IsChecked();
+	g_showFerry = checkFerry->IsChecked();
+	g_showLock = checkLock->IsChecked();
 }

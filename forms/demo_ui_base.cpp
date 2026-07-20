@@ -21,22 +21,68 @@ DemoWizardBase::DemoWizardBase( wxWindow* parent, wxWindowID id, const wxString&
 	wxBoxSizer* sizerPageOne;
 	sizerPageOne = new wxBoxSizer( wxVERTICAL );
 
-	checkBoxBoolean = new wxCheckBox( DemoWizardPageOne, wxID_ANY, _("Some Boolean Value"), wxDefaultPosition, wxDefaultSize, 0 );
-	sizerPageOne->Add( checkBoxBoolean, 0, wxALL, 5 );
+	wxStaticBoxSizer* SizerCheckBoxes;
+	SizerCheckBoxes = new wxStaticBoxSizer( new wxStaticBox( DemoWizardPageOne, wxID_ANY, _("Select Points of Interest (POI)") ), wxVERTICAL );
 
-	labelInteger = new wxStaticText( DemoWizardPageOne, wxID_ANY, _("Some Integer Value"), wxDefaultPosition, wxDefaultSize, 0 );
-	labelInteger->Wrap( -1 );
-	sizerPageOne->Add( labelInteger, 0, wxALL, 5 );
+	scrolledWindow = new wxScrolledWindow( SizerCheckBoxes->GetStaticBox(), wxID_ANY, wxDefaultPosition, wxDefaultSize, wxVSCROLL );
+	scrolledWindow->SetScrollRate( 5, 5 );
+	wxBoxSizer* sizerScrollWindow;
+	sizerScrollWindow = new wxBoxSizer( wxVERTICAL );
 
-	sliderInteger = new wxSlider( DemoWizardPageOne, wxID_ANY, 50, 0, 100, wxDefaultPosition, wxDefaultSize, wxSL_HORIZONTAL|wxSL_MIN_MAX_LABELS|wxSL_VALUE_LABEL );
-	sizerPageOne->Add( sliderInteger, 0, wxALL|wxEXPAND, 5 );
+	checkMarina = new wxCheckBox( scrolledWindow, wxID_ANY, _("Marina"), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerScrollWindow->Add( checkMarina, 0, wxALL, 5 );
 
-	labelString = new wxStaticText( DemoWizardPageOne, wxID_ANY, _("Some String Value"), wxDefaultPosition, wxDefaultSize, 0 );
-	labelString->Wrap( -1 );
-	sizerPageOne->Add( labelString, 0, wxALL, 5 );
+	checkAnchorage = new wxCheckBox( scrolledWindow, wxID_ANY, _("Anchorage"), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerScrollWindow->Add( checkAnchorage, 0, wxALL, 5 );
 
-	textString = new wxTextCtrl( DemoWizardPageOne, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0 );
-	sizerPageOne->Add( textString, 0, wxALL|wxEXPAND, 5 );
+	checkHazard = new wxCheckBox( scrolledWindow, wxID_ANY, _("Hazard"), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerScrollWindow->Add( checkHazard, 0, wxALL, 5 );
+
+	checkBusiness = new wxCheckBox( scrolledWindow, wxID_ANY, _("Business"), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerScrollWindow->Add( checkBusiness, 0, wxALL, 5 );
+
+	checkBoatRamp = new wxCheckBox( scrolledWindow, wxID_ANY, _("Boat Ramp"), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerScrollWindow->Add( checkBoatRamp, 0, wxALL, 5 );
+
+	checkBridge = new wxCheckBox( scrolledWindow, wxID_ANY, _("Bridge"), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerScrollWindow->Add( checkBridge, 0, wxALL, 5 );
+
+	checkDam = new wxCheckBox( scrolledWindow, wxID_ANY, _("Dam"), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerScrollWindow->Add( checkDam, 0, wxALL, 5 );
+
+	checkFerry = new wxCheckBox( scrolledWindow, wxID_ANY, _("Ferry"), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerScrollWindow->Add( checkFerry, 0, wxALL, 5 );
+
+	checkLock = new wxCheckBox( scrolledWindow, wxID_ANY, _("Lock"), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerScrollWindow->Add( checkLock, 0, wxALL, 5 );
+
+
+	scrolledWindow->SetSizer( sizerScrollWindow );
+	scrolledWindow->Layout();
+	sizerScrollWindow->Fit( scrolledWindow );
+	SizerCheckBoxes->Add( scrolledWindow, 1, wxEXPAND | wxALL, 5 );
+
+
+	sizerPageOne->Add( SizerCheckBoxes, 1, wxEXPAND, 5 );
+
+	wxBoxSizer* sizerDisclaimer;
+	sizerDisclaimer = new wxBoxSizer( wxHORIZONTAL );
+
+	bitmapGarmin = new wxStaticBitmap( DemoWizardPageOne, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
+	sizerDisclaimer->Add( bitmapGarmin, 0, wxALL, 5 );
+
+	wxBoxSizer* sizerLabels;
+	sizerLabels = new wxBoxSizer( wxVERTICAL );
+
+	labelDisclaimer = new wxStaticText( DemoWizardPageOne, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0 );
+	labelDisclaimer->Wrap( -1 );
+	sizerLabels->Add( labelDisclaimer, 0, wxALL, 5 );
+
+
+	sizerDisclaimer->Add( sizerLabels, 1, wxEXPAND, 5 );
+
+
+	sizerPageOne->Add( sizerDisclaimer, 0, wxEXPAND, 5 );
 
 
 	DemoWizardPageOne->SetSizer( sizerPageOne );
@@ -55,17 +101,6 @@ DemoWizardBase::DemoWizardBase( wxWindow* parent, wxWindowID id, const wxString&
 	this->Connect( wxEVT_INIT_DIALOG, wxInitDialogEventHandler( DemoWizardBase::OnInit ) );
 	this->Connect( wxID_ANY, wxEVT_WIZARD_CANCEL, wxWizardEventHandler( DemoWizardBase::OnCancel ) );
 	this->Connect( wxID_ANY, wxEVT_WIZARD_FINISHED, wxWizardEventHandler( DemoWizardBase::OnFinished ) );
-	checkBoxBoolean->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( DemoWizardBase::OnCheckBoolean ), NULL, this );
-	sliderInteger->Connect( wxEVT_SCROLL_TOP, wxScrollEventHandler( DemoWizardBase::OnSliderChanged ), NULL, this );
-	sliderInteger->Connect( wxEVT_SCROLL_BOTTOM, wxScrollEventHandler( DemoWizardBase::OnSliderChanged ), NULL, this );
-	sliderInteger->Connect( wxEVT_SCROLL_LINEUP, wxScrollEventHandler( DemoWizardBase::OnSliderChanged ), NULL, this );
-	sliderInteger->Connect( wxEVT_SCROLL_LINEDOWN, wxScrollEventHandler( DemoWizardBase::OnSliderChanged ), NULL, this );
-	sliderInteger->Connect( wxEVT_SCROLL_PAGEUP, wxScrollEventHandler( DemoWizardBase::OnSliderChanged ), NULL, this );
-	sliderInteger->Connect( wxEVT_SCROLL_PAGEDOWN, wxScrollEventHandler( DemoWizardBase::OnSliderChanged ), NULL, this );
-	sliderInteger->Connect( wxEVT_SCROLL_THUMBTRACK, wxScrollEventHandler( DemoWizardBase::OnSliderChanged ), NULL, this );
-	sliderInteger->Connect( wxEVT_SCROLL_THUMBRELEASE, wxScrollEventHandler( DemoWizardBase::OnSliderChanged ), NULL, this );
-	sliderInteger->Connect( wxEVT_SCROLL_CHANGED, wxScrollEventHandler( DemoWizardBase::OnSliderChanged ), NULL, this );
-	textString->Connect( wxEVT_COMMAND_TEXT_UPDATED, wxCommandEventHandler( DemoWizardBase::OnTextChanged ), NULL, this );
 }
 
 DemoWizardBase::~DemoWizardBase()
@@ -80,28 +115,68 @@ DemoSettingsBase::DemoSettingsBase( wxWindow* parent, wxWindowID id, const wxStr
 	wxBoxSizer* sizerDialog;
 	sizerDialog = new wxBoxSizer( wxVERTICAL );
 
-	wxBoxSizer* sizerSettings;
-	sizerSettings = new wxBoxSizer( wxVERTICAL );
+	wxStaticBoxSizer* SizerCheckBoxes;
+	SizerCheckBoxes = new wxStaticBoxSizer( new wxStaticBox( this, wxID_ANY, _("Select Points of Interest (POI)") ), wxVERTICAL );
 
-	checkBoxBoolean = new wxCheckBox( this, wxID_ANY, _("Some Boolean Value"), wxDefaultPosition, wxDefaultSize, 0 );
-	sizerSettings->Add( checkBoxBoolean, 0, wxALL, 5 );
+	scrolledWindow = new wxScrolledWindow( SizerCheckBoxes->GetStaticBox(), wxID_ANY, wxDefaultPosition, wxDefaultSize, wxVSCROLL );
+	scrolledWindow->SetScrollRate( 5, 5 );
+	wxBoxSizer* sizerScrollWindow;
+	sizerScrollWindow = new wxBoxSizer( wxVERTICAL );
 
-	labelInteger = new wxStaticText( this, wxID_ANY, _("Some Integer Value"), wxDefaultPosition, wxDefaultSize, 0 );
-	labelInteger->Wrap( -1 );
-	sizerSettings->Add( labelInteger, 0, wxALL, 5 );
+	checkMarina = new wxCheckBox( scrolledWindow, wxID_ANY, _("Marina"), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerScrollWindow->Add( checkMarina, 0, wxALL, 5 );
 
-	sliderInteger = new wxSlider( this, wxID_ANY, 50, 0, 100, wxDefaultPosition, wxDefaultSize, wxSL_HORIZONTAL|wxSL_MIN_MAX_LABELS|wxSL_VALUE_LABEL );
-	sizerSettings->Add( sliderInteger, 0, wxALL|wxEXPAND, 5 );
+	checkAnchorage = new wxCheckBox( scrolledWindow, wxID_ANY, _("Anchorage"), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerScrollWindow->Add( checkAnchorage, 0, wxALL, 5 );
 
-	labelString = new wxStaticText( this, wxID_ANY, _("Some String Value"), wxDefaultPosition, wxDefaultSize, 0 );
-	labelString->Wrap( -1 );
-	sizerSettings->Add( labelString, 0, wxALL, 5 );
+	checkHazard = new wxCheckBox( scrolledWindow, wxID_ANY, _("Hazard"), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerScrollWindow->Add( checkHazard, 0, wxALL, 5 );
 
-	textString = new wxTextCtrl( this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0 );
-	sizerSettings->Add( textString, 0, wxALL|wxEXPAND, 5 );
+	checkBusiness = new wxCheckBox( scrolledWindow, wxID_ANY, _("Business"), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerScrollWindow->Add( checkBusiness, 0, wxALL, 5 );
+
+	checkBoatRamp = new wxCheckBox( scrolledWindow, wxID_ANY, _("Boat Ramp"), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerScrollWindow->Add( checkBoatRamp, 0, wxALL, 5 );
+
+	checkBridge = new wxCheckBox( scrolledWindow, wxID_ANY, _("Bridge"), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerScrollWindow->Add( checkBridge, 0, wxALL, 5 );
+
+	checkDam = new wxCheckBox( scrolledWindow, wxID_ANY, _("Dam"), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerScrollWindow->Add( checkDam, 0, wxALL, 5 );
+
+	checkFerry = new wxCheckBox( scrolledWindow, wxID_ANY, _("Ferry"), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerScrollWindow->Add( checkFerry, 0, wxALL, 5 );
+
+	checkLock = new wxCheckBox( scrolledWindow, wxID_ANY, _("Lock"), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerScrollWindow->Add( checkLock, 0, wxALL, 5 );
 
 
-	sizerDialog->Add( sizerSettings, 1, wxEXPAND, 5 );
+	scrolledWindow->SetSizer( sizerScrollWindow );
+	scrolledWindow->Layout();
+	sizerScrollWindow->Fit( scrolledWindow );
+	SizerCheckBoxes->Add( scrolledWindow, 1, wxEXPAND | wxALL, 5 );
+
+
+	sizerDialog->Add( SizerCheckBoxes, 1, wxEXPAND, 5 );
+
+	wxBoxSizer* sizerDisclaimer;
+	sizerDisclaimer = new wxBoxSizer( wxHORIZONTAL );
+
+	bitmapGarmin = new wxStaticBitmap( this, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
+	sizerDisclaimer->Add( bitmapGarmin, 0, wxALL, 5 );
+
+	wxBoxSizer* sizerLabels;
+	sizerLabels = new wxBoxSizer( wxVERTICAL );
+
+	labelDisclaimer = new wxStaticText( this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0 );
+	labelDisclaimer->Wrap( -1 );
+	sizerLabels->Add( labelDisclaimer, 0, wxALL, 5 );
+
+
+	sizerDisclaimer->Add( sizerLabels, 1, wxEXPAND, 5 );
+
+
+	sizerDialog->Add( sizerDisclaimer, 0, wxEXPAND, 5 );
 
 	wxBoxSizer* sizerButtons;
 	sizerButtons = new wxBoxSizer( wxHORIZONTAL );
@@ -111,9 +186,6 @@ DemoSettingsBase::DemoSettingsBase( wxWindow* parent, wxWindowID id, const wxStr
 
 	buttonOK = new wxButton( this, wxID_ANY, _("OK"), wxDefaultPosition, wxDefaultSize, 0 );
 	sizerButtons->Add( buttonOK, 0, wxALL, 5 );
-
-	buttonApply = new wxButton( this, wxID_ANY, _("Apply"), wxDefaultPosition, wxDefaultSize, 0 );
-	sizerButtons->Add( buttonApply, 0, wxALL, 5 );
 
 	buttonCancel = new wxButton( this, wxID_ANY, _("Cancel"), wxDefaultPosition, wxDefaultSize, 0 );
 	sizerButtons->Add( buttonCancel, 0, wxALL, 5 );
@@ -129,19 +201,7 @@ DemoSettingsBase::DemoSettingsBase( wxWindow* parent, wxWindowID id, const wxStr
 
 	// Connect Events
 	this->Connect( wxEVT_INIT_DIALOG, wxInitDialogEventHandler( DemoSettingsBase::OnInit ) );
-	checkBoxBoolean->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( DemoSettingsBase::OnCheckBoolean ), NULL, this );
-	sliderInteger->Connect( wxEVT_SCROLL_TOP, wxScrollEventHandler( DemoSettingsBase::OnSliderChanged ), NULL, this );
-	sliderInteger->Connect( wxEVT_SCROLL_BOTTOM, wxScrollEventHandler( DemoSettingsBase::OnSliderChanged ), NULL, this );
-	sliderInteger->Connect( wxEVT_SCROLL_LINEUP, wxScrollEventHandler( DemoSettingsBase::OnSliderChanged ), NULL, this );
-	sliderInteger->Connect( wxEVT_SCROLL_LINEDOWN, wxScrollEventHandler( DemoSettingsBase::OnSliderChanged ), NULL, this );
-	sliderInteger->Connect( wxEVT_SCROLL_PAGEUP, wxScrollEventHandler( DemoSettingsBase::OnSliderChanged ), NULL, this );
-	sliderInteger->Connect( wxEVT_SCROLL_PAGEDOWN, wxScrollEventHandler( DemoSettingsBase::OnSliderChanged ), NULL, this );
-	sliderInteger->Connect( wxEVT_SCROLL_THUMBTRACK, wxScrollEventHandler( DemoSettingsBase::OnSliderChanged ), NULL, this );
-	sliderInteger->Connect( wxEVT_SCROLL_THUMBRELEASE, wxScrollEventHandler( DemoSettingsBase::OnSliderChanged ), NULL, this );
-	sliderInteger->Connect( wxEVT_SCROLL_CHANGED, wxScrollEventHandler( DemoSettingsBase::OnSliderChanged ), NULL, this );
-	textString->Connect( wxEVT_COMMAND_TEXT_UPDATED, wxCommandEventHandler( DemoSettingsBase::OnTextChanged ), NULL, this );
 	buttonOK->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DemoSettingsBase::OnOK ), NULL, this );
-	buttonApply->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DemoSettingsBase::OnApply ), NULL, this );
 	buttonCancel->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DemoSettingsBase::OnCancel ), NULL, this );
 }
 
@@ -151,44 +211,161 @@ DemoSettingsBase::~DemoSettingsBase()
 
 DemoToolboxBase::DemoToolboxBase( wxWindow* parent, wxWindowID id, const wxPoint& pos, const wxSize& size, long style, const wxString& name ) : wxPanel( parent, id, pos, size, style, name )
 {
-	wxBoxSizer* sizerToolbox;
-	sizerToolbox = new wxBoxSizer( wxVERTICAL );
+	wxBoxSizer* sizerPanel;
+	sizerPanel = new wxBoxSizer( wxVERTICAL );
 
-	checkBoxBoolean = new wxCheckBox( this, wxID_ANY, _("Some Boolean Value"), wxDefaultPosition, wxDefaultSize, 0 );
-	sizerToolbox->Add( checkBoxBoolean, 0, wxALL, 5 );
+	wxStaticBoxSizer* SizerCheckBoxes;
+	SizerCheckBoxes = new wxStaticBoxSizer( new wxStaticBox( this, wxID_ANY, _("Select Points of Interest (POI)") ), wxVERTICAL );
 
-	labelInteger = new wxStaticText( this, wxID_ANY, _("Some Integer Value"), wxDefaultPosition, wxDefaultSize, 0 );
-	labelInteger->Wrap( -1 );
-	sizerToolbox->Add( labelInteger, 0, wxALL, 5 );
+	scrolledWindow = new wxScrolledWindow( SizerCheckBoxes->GetStaticBox(), wxID_ANY, wxDefaultPosition, wxDefaultSize, wxVSCROLL );
+	scrolledWindow->SetScrollRate( 5, 5 );
+	wxBoxSizer* sizerScrollWindow;
+	sizerScrollWindow = new wxBoxSizer( wxVERTICAL );
 
-	sliderInteger = new wxSlider( this, wxID_ANY, 50, 0, 100, wxDefaultPosition, wxDefaultSize, wxSL_HORIZONTAL|wxSL_MIN_MAX_LABELS|wxSL_VALUE_LABEL );
-	sizerToolbox->Add( sliderInteger, 0, wxALL|wxEXPAND, 5 );
+	checkMarina = new wxCheckBox( scrolledWindow, wxID_ANY, _("Marina"), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerScrollWindow->Add( checkMarina, 0, wxALL, 5 );
 
-	labelString = new wxStaticText( this, wxID_ANY, _("Some String Value"), wxDefaultPosition, wxDefaultSize, 0 );
-	labelString->Wrap( -1 );
-	sizerToolbox->Add( labelString, 0, wxALL, 5 );
+	checkAnchorage = new wxCheckBox( scrolledWindow, wxID_ANY, _("Anchorage"), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerScrollWindow->Add( checkAnchorage, 0, wxALL, 5 );
 
-	textString = new wxTextCtrl( this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0 );
-	sizerToolbox->Add( textString, 0, wxALL|wxEXPAND, 5 );
+	checkHazard = new wxCheckBox( scrolledWindow, wxID_ANY, _("Hazard"), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerScrollWindow->Add( checkHazard, 0, wxALL, 5 );
+
+	checkBusiness = new wxCheckBox( scrolledWindow, wxID_ANY, _("Business"), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerScrollWindow->Add( checkBusiness, 0, wxALL, 5 );
+
+	checkBoatRamp = new wxCheckBox( scrolledWindow, wxID_ANY, _("Boat Ramp"), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerScrollWindow->Add( checkBoatRamp, 0, wxALL, 5 );
+
+	checkBridge = new wxCheckBox( scrolledWindow, wxID_ANY, _("Bridge"), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerScrollWindow->Add( checkBridge, 0, wxALL, 5 );
+
+	checkDam = new wxCheckBox( scrolledWindow, wxID_ANY, _("Dam"), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerScrollWindow->Add( checkDam, 0, wxALL, 5 );
+
+	checkFerry = new wxCheckBox( scrolledWindow, wxID_ANY, _("Ferry"), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerScrollWindow->Add( checkFerry, 0, wxALL, 5 );
+
+	checkLock = new wxCheckBox( scrolledWindow, wxID_ANY, _("Lock"), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerScrollWindow->Add( checkLock, 0, wxALL, 5 );
 
 
-	this->SetSizer( sizerToolbox );
+	scrolledWindow->SetSizer( sizerScrollWindow );
+	scrolledWindow->Layout();
+	sizerScrollWindow->Fit( scrolledWindow );
+	SizerCheckBoxes->Add( scrolledWindow, 1, wxEXPAND | wxALL, 5 );
+
+
+	sizerPanel->Add( SizerCheckBoxes, 1, wxEXPAND, 5 );
+
+	wxBoxSizer* sizerDisclaimer;
+	sizerDisclaimer = new wxBoxSizer( wxHORIZONTAL );
+
+	bitmapGarmin = new wxStaticBitmap( this, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
+	sizerDisclaimer->Add( bitmapGarmin, 0, wxALL, 5 );
+
+	wxBoxSizer* sizerLabels;
+	sizerLabels = new wxBoxSizer( wxVERTICAL );
+
+	labelDisclaimer = new wxStaticText( this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0 );
+	labelDisclaimer->Wrap( -1 );
+	sizerLabels->Add( labelDisclaimer, 0, wxALL, 5 );
+
+
+	sizerDisclaimer->Add( sizerLabels, 1, wxEXPAND, 5 );
+
+
+	sizerPanel->Add( sizerDisclaimer, 0, wxEXPAND, 5 );
+
+
+	this->SetSizer( sizerPanel );
 	this->Layout();
-
-	// Connect Events
-	checkBoxBoolean->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( DemoToolboxBase::OnCheckBoolean ), NULL, this );
-	sliderInteger->Connect( wxEVT_SCROLL_TOP, wxScrollEventHandler( DemoToolboxBase::OnSliderChanged ), NULL, this );
-	sliderInteger->Connect( wxEVT_SCROLL_BOTTOM, wxScrollEventHandler( DemoToolboxBase::OnSliderChanged ), NULL, this );
-	sliderInteger->Connect( wxEVT_SCROLL_LINEUP, wxScrollEventHandler( DemoToolboxBase::OnSliderChanged ), NULL, this );
-	sliderInteger->Connect( wxEVT_SCROLL_LINEDOWN, wxScrollEventHandler( DemoToolboxBase::OnSliderChanged ), NULL, this );
-	sliderInteger->Connect( wxEVT_SCROLL_PAGEUP, wxScrollEventHandler( DemoToolboxBase::OnSliderChanged ), NULL, this );
-	sliderInteger->Connect( wxEVT_SCROLL_PAGEDOWN, wxScrollEventHandler( DemoToolboxBase::OnSliderChanged ), NULL, this );
-	sliderInteger->Connect( wxEVT_SCROLL_THUMBTRACK, wxScrollEventHandler( DemoToolboxBase::OnSliderChanged ), NULL, this );
-	sliderInteger->Connect( wxEVT_SCROLL_THUMBRELEASE, wxScrollEventHandler( DemoToolboxBase::OnSliderChanged ), NULL, this );
-	sliderInteger->Connect( wxEVT_SCROLL_CHANGED, wxScrollEventHandler( DemoToolboxBase::OnSliderChanged ), NULL, this );
-	textString->Connect( wxEVT_COMMAND_TEXT_UPDATED, wxCommandEventHandler( DemoToolboxBase::OnTextChanged ), NULL, this );
 }
 
 DemoToolboxBase::~DemoToolboxBase()
+{
+}
+
+DemoActiveCaptainBase::DemoActiveCaptainBase( wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style ) : wxDialog( parent, id, title, pos, size, style )
+{
+	this->SetSizeHints( wxDefaultSize, wxDefaultSize );
+
+	wxBoxSizer* sizerDialog;
+	sizerDialog = new wxBoxSizer( wxVERTICAL );
+
+	wxBoxSizer* sizerPOI;
+	sizerPOI = new wxBoxSizer( wxVERTICAL );
+
+	wxBoxSizer* sizerInfo;
+	sizerInfo = new wxBoxSizer( wxHORIZONTAL );
+
+	wxBoxSizer* sizerLabels;
+	sizerLabels = new wxBoxSizer( wxVERTICAL );
+
+	labelID = new wxStaticText( this, wxID_ANY, _("MyLabel"), wxDefaultPosition, wxDefaultSize, 0 );
+	labelID->Wrap( -1 );
+	sizerLabels->Add( labelID, 0, wxALL|wxEXPAND, 5 );
+
+	labelName = new wxStaticText( this, wxID_ANY, _("MyLabel"), wxDefaultPosition, wxDefaultSize, 0 );
+	labelName->Wrap( -1 );
+	sizerLabels->Add( labelName, 0, wxALL|wxEXPAND, 5 );
+
+	labelLatitude = new wxStaticText( this, wxID_ANY, _("MyLabel"), wxDefaultPosition, wxDefaultSize, 0 );
+	labelLatitude->Wrap( -1 );
+	sizerLabels->Add( labelLatitude, 0, wxALL|wxEXPAND, 5 );
+
+	labelLongitude = new wxStaticText( this, wxID_ANY, _("MyLabel"), wxDefaultPosition, wxDefaultSize, 0 );
+	labelLongitude->Wrap( -1 );
+	sizerLabels->Add( labelLongitude, 0, wxALL, 5 );
+
+
+	sizerInfo->Add( sizerLabels, 1, wxEXPAND, 5 );
+
+	wxBoxSizer* sizerIcon;
+	sizerIcon = new wxBoxSizer( wxVERTICAL );
+
+	bitmapType = new wxStaticBitmap( this, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
+	sizerIcon->Add( bitmapType, 0, wxALL, 5 );
+
+
+	sizerInfo->Add( sizerIcon, 1, wxEXPAND, 5 );
+
+
+	sizerPOI->Add( sizerInfo, 1, wxEXPAND, 5 );
+
+	labelInformation = new wxStaticText( this, wxID_ANY, _("Information"), wxDefaultPosition, wxDefaultSize, 0 );
+	labelInformation->Wrap( -1 );
+	sizerPOI->Add( labelInformation, 0, wxALL, 5 );
+
+	textInformation = new wxTextCtrl( this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE|wxTE_READONLY );
+	sizerPOI->Add( textInformation, 2, wxALL|wxEXPAND, 5 );
+
+
+	sizerDialog->Add( sizerPOI, 2, wxEXPAND, 5 );
+
+	wxBoxSizer* sizerButtons;
+	sizerButtons = new wxBoxSizer( wxHORIZONTAL );
+
+
+	sizerButtons->Add( 0, 0, 1, wxEXPAND, 5 );
+
+	buttonOK = new wxButton( this, wxID_ANY, _("OK"), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerButtons->Add( buttonOK, 0, wxALL, 5 );
+
+
+	sizerDialog->Add( sizerButtons, 0, wxEXPAND, 5 );
+
+
+	this->SetSizer( sizerDialog );
+	this->Layout();
+
+	this->Centre( wxBOTH );
+
+	// Connect Events
+	this->Connect( wxEVT_INIT_DIALOG, wxInitDialogEventHandler( DemoActiveCaptainBase::OnInit ) );
+	buttonOK->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DemoActiveCaptainBase::OnOK ), NULL, this );
+}
+
+DemoActiveCaptainBase::~DemoActiveCaptainBase()
 {
 }

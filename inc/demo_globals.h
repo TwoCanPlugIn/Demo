@@ -26,18 +26,83 @@
 #include "wx/wx.h"
 #endif
 
+enum class Category {
+	Marina,
+	Anchorage,
+	Hazard,
+	Business,
+	BoatRamp,
+	Bridge,
+	Dam,
+	Ferry,
+	Inlet,
+	Lock,
+	Default
+};
+
+static const std::unordered_map<wxString, Category> categoryMap = {
+	{"Marina",    Category::Marina},
+	{"Anchorage", Category::Anchorage},
+	{"Hazard",    Category::Hazard},
+	{"Business",  Category::Business},
+	{"BoatRamp",  Category::BoatRamp},
+	{"Bridge",    Category::Bridge},
+	{"Dam",       Category::Dam},
+	{"Ferry",     Category::Ferry},
+	{"Inlet",     Category::Inlet},
+	{"Lock",      Category::Lock}
+};
+
+
+struct CategoryInfo {
+	Category category;
+	wxString name;
+};
+
+extern std::vector<CategoryInfo> categories;
+
+// Hold information about an Active Captain Point of Interest
+struct ActiveCaptainPOI {
+	wxString id;
+	wxString name;
+	Category type;
+	double latitude;
+	double longitude;
+	double averageRating;
+	int reviewCount;
+	wxString notes;
+};
+
 // Globally accessible variables used by the plugin, dialogs etc.
 
-extern wxBitmap g_pluginBitmap;
-extern bool g_someBooleanValue;
-extern int g_someIntegerValue;
-extern wxString g_someStringValue;
+extern wxBitmap pluginBitmap;
+extern wxBitmap toolbarBitmap;
+// POI bitmaps (Converted from Garmin POI SVG files in theActive Caotain SDK)
+extern wxBitmap bitmapMarina;
+extern wxBitmap bitmapAnchorage;
+extern wxBitmap bitmapHazard;
+extern wxBitmap bitmapBusiness;
+extern wxBitmap bitmapBoatRamp;
+extern wxBitmap bitmapBridge;
+extern wxBitmap bitmapDam;
+extern wxBitmap bitmapFerry;
+extern wxBitmap bitmapInlet;
+extern wxBitmap bitmapLock;
+extern wxBitmap bitmapDefault;
+
+//The different Garmin Active Captain Points of Interest
+extern bool g_showMarina;
+extern bool g_showAnchorage;
+extern bool g_showHazard;
+extern bool g_showBusiness;
+extern bool g_showBoatRamp;
+extern bool g_showBridge;
+extern bool g_showDam;
+extern bool g_showFerry;
+extern bool g_showInlet;
+extern bool g_showLock;
 
 // Id's used for wxWidgets thingies
-constexpr int k_FirstContextMenu = wxID_HIGHEST + 1;
-constexpr int k_SecondContextMenu = wxID_HIGHEST + 2;
-
-// One minute of Latitude equals 1 Nautical Mile (Nm)
-constexpr double k_LatitudeMinute = 0.0166;
+constexpr int k_GarminContextMenu = wxID_HIGHEST + 1;
 
 #endif

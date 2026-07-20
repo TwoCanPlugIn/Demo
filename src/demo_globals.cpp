@@ -23,15 +23,48 @@
 // Date: 10/01/2026
 // Version History: 
 // 1.0 Initial Release
+// 1.0.1, 28/04/2026 - Updated for Active Captain POC
 
 #include "demo_globals.h"
+
+std::vector<CategoryInfo> categories = {
+	{Category::Marina,    wxString::FromAscii("Marina")},
+	{Category::Anchorage, wxString::FromAscii("Anchorage")},
+	{Category::Hazard,    wxString::FromAscii("Hazard")},
+	{Category::Business,  wxString::FromAscii("Business")},
+	{Category::BoatRamp,  wxString::FromAscii("BoatRamp")},
+	{Category::Bridge,    wxString::FromAscii("Bridge")},
+	{Category::Dam,       wxString::FromAscii("Dam")},
+	{Category::Ferry,     wxString::FromAscii("Ferry")},
+	{Category::Inlet,     wxString::FromAscii("Inlet")},
+	{Category::Lock,      wxString::FromAscii("Lock")}
+};
 
 // Globally accessible variables used by the plugin, dialogs etc.
 
 // Plugin icon
-wxBitmap g_pluginBitmap;
+wxBitmap pluginBitmap;
+wxBitmap toolbarBitmap;
+wxBitmap bitmapMarina;
+wxBitmap bitmapAnchorage;
+wxBitmap bitmapHazard;
+wxBitmap bitmapBusiness;
+wxBitmap bitmapBoatRamp;
+wxBitmap bitmapBridge;
+wxBitmap bitmapDam;
+wxBitmap bitmapFerry;
+wxBitmap bitmapInlet;
+wxBitmap bitmapLock;
+wxBitmap bitmapDefault;
 
-// Some fictitious plugin settings
-bool g_someBooleanValue = false;
-int g_someIntegerValue = 0;
-wxString g_someStringValue = wxEmptyString;
+// The different Garmin Active Captain Points of Interest
+bool g_showMarina;
+bool g_showAnchorage;
+bool g_showHazard;
+bool g_showBusiness;
+bool g_showBoatRamp;
+bool g_showBridge;
+bool g_showDam;
+bool g_showFerry;
+bool g_showInlet;
+bool g_showLock;

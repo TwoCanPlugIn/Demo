@@ -35,10 +35,10 @@ set(PKG_NAME demoplugin_pi) #or _pi
 set(PKG_VERSION  1.0)
 set(PKG_PRERELEASE "")  # Empty, or a tag like 'beta'
 
-set(DISPLAY_NAME DemoPlugin)    # Dialogs, installer artifacts, ...
-set(PLUGIN_API_NAME DemoPlugin) # As of GetCommonName() in plugin API
-set(PKG_SUMMARY "Demonstration plugin")
-set(PKG_DESCRIPTION "Demonstration plugin, illustrates the use of the different OpenCPN Plugin API's ")
+set(DISPLAY_NAME Active Captain Plugin)    # Dialogs, installer artifacts, ...
+set(PLUGIN_API_NAME ActiveCaptain) # As of GetCommonName() in plugin API
+set(PKG_SUMMARY "Active Captain plugin")
+set(PKG_DESCRIPTION "Active Captain plugin, a variant of the Demo plugin")
 set(PKG_AUTHOR "twocanplugin")
 set(PKG_IS_OPEN_SOURCE "yes")
 set(PKG_HOMEPAGE https://github.com/twocanplugin/demoplugin)
@@ -54,7 +54,8 @@ set(SRC
     ${CMAKE_SOURCE_DIR}/src/demo_globals.cpp
     ${CMAKE_SOURCE_DIR}/src/demo_wizard.cpp
     ${CMAKE_SOURCE_DIR}/src/demo_toolbox.cpp
-     ${CMAKE_SOURCE_DIR}/src/demo_settings.cpp
+    ${CMAKE_SOURCE_DIR}/src/demo_settings.cpp
+    ${CMAKE_SOURCE_DIR}/src/demo_activecaptain.cpp
     ${CMAKE_SOURCE_DIR}/src/demo_ui_base.cpp
 )
 set (INC
@@ -63,6 +64,7 @@ set (INC
     ${CMAKE_SOURCE_DIR}/inc/demo_wizard.h
     ${CMAKE_SOURCE_DIR}/inc/demo_toolbox.h
     ${CMAKE_SOURCE_DIR}/inc/demo_settings.h
+    ${CMAKE_SOURCE_DIR}/inc/demo_activecaptain.h
     ${CMAKE_SOURCE_DIR}/inc/demo_ui_base.h
 )
 
@@ -77,12 +79,6 @@ macro(late_init)
 endmacro ()
 
 macro(add_plugin_libraries)
-
-    add_subdirectory(opencpn-libs/nmea0183)
-    target_link_libraries(${PACKAGE_NAME} ocpn::nmea0183)
-
-    add_subdirectory(opencpn-libs/n2kparser)
-    target_link_libraries(${PACKAGE_NAME} ocpn::N2KParser)
 
     add_subdirectory(opencpn-libs/wxJSON)
     target_link_libraries(${PACKAGE_NAME} ocpn::wxjson)
