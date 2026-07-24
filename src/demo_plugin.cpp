@@ -53,6 +53,7 @@
 // Chapter 14. Interacting with the canvas
 // Chapter 15. Using wxWidgets Advanced User Interface (wxAUI)
 // Chapter 16. Chart Plugin - (16a. Non OpenGL)
+//			   Chart Plugin - (16b. OpenGL)
 
 #include "demo_plugin.h"
 
@@ -172,7 +173,7 @@ int DemoPlugin::Init(void) {
 		| WANTS_NMEA_EVENTS | WANTS_NMEA_SENTENCES | WANTS_LATE_INIT | WANTS_PLUGIN_MESSAGING
 		| WANTS_OVERLAY_CALLBACK | WANTS_OPENGL_OVERLAY_CALLBACK | WANTS_MOUSE_EVENTS 
 		| WANTS_CURSOR_LATLON | WANTS_ONPAINT_VIEWPORT | WANTS_KEYBOARD_EVENTS
-		| USES_AUI_MANAGER | INSTALLS_PLUGIN_CHART);
+		| USES_AUI_MANAGER | INSTALLS_PLUGIN_CHART_GL);
 }
 
 // OpenCPN is either closing down, or the plugin has been disabled from the Preferences Dialog
@@ -1341,13 +1342,13 @@ void DemoPlugin::SetColorScheme(PI_ColorScheme cs) {
 }
 
 // PlugIn Chart API
-// Requires INSTALLS_PLUGIN_CHART
+// Requires INSTALLS_PLUGIN_CHART or INSTALLS_PLUGIN_CHART_GL for OpenGL
 wxArrayString DemoPlugin::GetDynamicChartClassNameArray() {
 	wxLogMessage("#### Get Dynamic Chart Class called");
 	wxArrayString results;
 	// This is the name of the class that implements PlugInChartBase
 	// wxWidgets uses Run Time Type Information (RTTI) to find & load the class
-	results.Add("DemoChart");
+	results.Add("DemoChartGL");
 	return results;
 }
 

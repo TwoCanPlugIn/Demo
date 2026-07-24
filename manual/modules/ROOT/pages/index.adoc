@@ -1920,4 +1920,246 @@ for (const auto& chartFeature : m_chartFeatures)   {
 Although this is a vector chart, the plugin has yet to populate any ENC objects.
 A right mouse click on an object will only display an "empty" object properties dialog.
 
+==== OpenGL
+
+As previously described in Chapter 13, OpenCPN takes advantage of OpenGL to improve graphics
+performance by offloading graphics processing onto Graphics Processing Units (GPU). Similar to 
+drawing on the canvas as described previously, Chart plugins can also improve rendering performance
+by using OpenGL.
+
+Instead of deriving the plugin from PluginChartBase, Chart plugins utilising OpenGL derive from 
+PluginChartBaseGL or any of the extended versions. Aside from the OpenGL API's, there are only a few 
+notable differences between the two base classes.
+
+Obviously the Chart plugin inherits from PluginChartBaseGL and it also must register itself with
+the wxWidgets RTTI. In the declaration:
+[source,cpp]
+----
+class DemoChartGL : public PlugInChartBaseGL {
+
+// OpenCPN uses RTTI to load the Chart Plugin
+DECLARE_DYNAMIC_CLASS(DemoChartGL)
+....
+----
+
+and in the definition:
+[source,cpp]
+----
+IMPLEMENT_DYNAMIC_CLASS(DemoChartGL, PlugInChartBaseGL)
+
+// Constructor and destructor implementation
+DemoChartGL::DemoChartGL() : PlugInChartBaseGL() {
+....
+}
+----
+
+Similarly the Plugin needs to return INSTALLS_PLUGIN_CHART_GL in the plugin's Init function.
+[source,cpp]
+----
+int DemoPlugin::Init(void) {
+....
+return INSTALLS_PLUGIN_CHART_GL;
+}
+----
+
+And it must implement the Plugin callback function GetDynamicChartClassNameArray(), 
+returning the name of the class that is derived from PlugInChartBaseGL and was registered 
+with the wxWidgets RTTI. 
+[source,cpp]
+----
+wxArrayString DemoPlugin::GetDynamicChartClassNameArray() {
+	wxArrayString results;
+	results.Add("DemoChartGL");
+	return results;
+}
+----
+
+Note that for this demo, a separate class is being used for the non OpenGL and the
+OpenGL variants of the Chart plugin, simply for readability. Also note that this is 
+not a tutorial about OpenGL!The majority of the Chart plugin callback API's remain unchanged, GetFileSearchMask,
+Init, metadata, viewport and scale related functions.
+
+The major change is a different rendering callback API and some 
+additional API's that indicate the areas where the chart does not provide coverage;
+
+[source,cpp]
+----
+int RenderRegionViewOnGL(const wxGLContext& glc, const PlugIn_ViewPort& VPoint,
+        const wxRegion& Region, bool b_use_stencil)
+int GetNoCOVREntries();
+int GetNoCOVRTablePoints(int iTable);
+int GetNoCOVRTablenPoints(int iTable);
+float* GetNoCOVRTableHead(int iTable);
+----
+
+OpenGL draws primitives, essentially lines and triangles. Complex shapes, such as
+land, lakes, coastlines are drawn using tesselation, essentialy breaking the complex shape
+into a collection of triangles. Historically to support tesselation OpenCPN used the OpenGL 
+Utility Library (GLU) which relies on callback functions. More modern OpenGL based applications 
+may use other libraries such as Earcut or libtess2.
+
+The first section of the DemoChartGL class defines the GLU tesselator callbacks.
+[source,cpp]
+----
+// Tessellator callback types
+struct Vert3 { double x, y, z; };
+
+struct TessContext {
+    std::vector<std::array<double, 3>> vertices; // GLU requires arrays of 3 doubles. Eg. double[3]
+};
+
+static void CALLBACK tessVertex(void* data) {
+    double* pt = static_cast<double*>(data);
+    glVertex2d(pt[0], pt[1]);
+}
+
+static void CALLBACK tessBegin(GLenum type) { 
+    glBegin(type); 
+}
+
+static void CALLBACK tessEnd() { 
+    glEnd(); 
+}
+----
+
+In order to avoid rendering objects that lie outside of the viewport, the viewport and region
+are passed as parameters in the calback API:
+[source,cpp]
+----
+RenderRegionViewOnGL(const wxGLContext& glc, const PlugIn_ViewPort& viewPort, 
+    const wxRegion& Region, bool b_use_stencil);
+----
+
+A plugin will then iterate through chart objects and only render those that lie within the viewport. 
+However OpenGL supports stencils which will automatically perform the clipping. Support
+for stencils by the underlying hardware is indicated by the flag b_use_stencil. If the flag is true, the 
+Chart plugin can offload the selection of objects to be rendered to the OpenGL stencil.
+[source,cpp]
+----
+if (b_use_stencil) {
+    glClear(GL_STENCIL_BUFFER_BIT);
+    glEnable(GL_STENCIL_TEST);
+
+    // Every fragment that passes writes a "1" into the stencil.
+    glStencilFunc(GL_ALWAYS, 1, 0xFF);
+    glStencilOp(GL_REPLACE, GL_REPLACE, GL_REPLACE);
+
+    // Set the colour and depth mask, unused in this demo
+    glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+    glDepthMask(GL_FALSE);
+
+    wxRegionIterator it(Region);
+   
+    while (it) {
+        int x = it.GetX();
+        int y = it.GetY();
+        int w = it.GetW();
+        int h = it.GetH();
+
+        glBegin(GL_QUADS);
+        glVertex2i(x, y);
+        glVertex2i(x + w, y);
+        glVertex2i(x + w, y + h);
+        glVertex2i(x, y + h);
+        glEnd();
+
+        ++it;
+    }
+
+    // Reset the colour & depth masks (unneccessary as they weren't used)
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    glDepthMask(GL_TRUE);
+
+    // Only enable drawing where the stencil mask applies
+    glStencilFunc(GL_EQUAL, 1, 0xFF);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+
+}
+----
+
+Next the Chart plugin sets the background colour.
+[source,cpp]
+----
+glClearColor(206.f / 255.f, 206.f / 255.f, 250.f / 255.f, 1.f);
+glClear(GL_COLOR_BUFFER_BIT);
+----
+
+The chart plugin then sets the projection matrix. As all objects are the same "distance" away from
+the screen (ie. no depth perspective), it is set to an orthographic projection. Important to also
+note that the y-axis increases downward matching the screen co-ordinates. 
+[source,cpp]
+----
+glMatrixMode(GL_PROJECTION);
+glLoadIdentity();
+glOrtho(0.0, viewPort.pix_width, viewPort.pix_height, 0.0, -1.0, 1.0);
+----
+
+Next we set the model view where blending (ie. transparency) is configured
+[source,cpp]
+----
+glMatrixMode(GL_MODELVIEW);
+glLoadIdentity();
+glEnable(GL_BLEND);
+glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+----
+
+The tesselator callback functions are then registered.
+[source,cpp]
+----
+GLUtesselator* tess = gluNewTess();
+gluTessCallback(tess, GLU_TESS_BEGIN, (GLvoid(CALLBACK*)()) tessBegin);
+gluTessCallback(tess, GLU_TESS_END, (GLvoid(CALLBACK*)()) tessEnd);
+gluTessCallback(tess, GLU_TESS_VERTEX, (GLvoid(CALLBACK*)()) tessVertex);
+gluTessCallback(tess, GLU_TESS_ERROR, (GLvoid(CALLBACK*)()) tessError);
+gluTessCallback(tess, GLU_TESS_COMBINE, (void (CALLBACK*)())tessCombine);
+gluTessProperty(tess, GLU_TESS_WINDING_RULE, GLU_TESS_WINDING_NONZERO);
+----
+
+The geographical co-ordinates are converted to screen co-ordinates as OpenGL
+vertexes; an array of 3 doubles. (Be aware that in this demo as the chart data is GeoJSON formatted
+the latitude and longitude are reversed. Don't do the same for your code!)
+[source,cpp]
+----
+std::vector<Vert3> vertices(polygon.size());
+for (size_t i = 0; i < polygon.size(); ++i) {
+    wxPoint point;
+    GetCanvasPixLL((PlugIn_ViewPort*)&viewPort, &point, polygon[i].y, polygon[i].x);
+    Vert3 threeDVertex;
+    threeDVertex.x = (double)point.x;
+    threeDVertex.y = (double)point.y;
+    threeDVertex.z = 0.0;
+    vertices.push_back(threeDVertex);
+}
+----
+
+Finally these are passed to the tesselator and then drawn.
+[source,cpp]
+----
+gluTessBeginPolygon(tess, nullptr);
+gluTessBeginContour(tess);
+                    
+for (auto& vertex : vertices) {
+    gluTessVertex(tess, &vertex.x, &vertex.x); // Note to self, passing vertex.x as user data??
+}
+
+gluTessEndContour(tess);
+gluTessEndPolygon(tess);
+----
+
+Colours for lines and fills are set using the following API and floats are used for the Red,
+Green, Blue and Alpha values.
+[source,cpp]
+----
+glColor4f(0.30f, 0.65f, 0.20f, 0.5f); 
+----
+image::demo_plugin-30.png[]
+
+There are many opportunities for improvements in this simple OpenGL demo, for example separating
+geometry creation from rendering, replacing GLU with modern libraries, adopting Vertex Arrays or
+Vertex Buffer Objects (VBO), taking advantage of modern C++ STL features and of course general code
+improvements.
+
+A better example of a complete Chart plugin can be found at https://github.com/beetlebugorg/tile57-opencpn-plugin
+
+
 == 5. FAQ

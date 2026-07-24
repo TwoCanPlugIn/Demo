@@ -59,6 +59,7 @@ set(SRC
     ${CMAKE_SOURCE_DIR}/src/demo_ui_base.cpp
     ${CMAKE_SOURCE_DIR}/src/demo_dash.cpp
     ${CMAKE_SOURCE_DIR}/src/demo_chart.cpp
+    ${CMAKE_SOURCE_DIR}/src/demo_chartgl.cpp
     ${CMAKE_SOURCE_DIR}/src/demo_geojson.cpp
 )
 set (INC
@@ -70,6 +71,7 @@ set (INC
     ${CMAKE_SOURCE_DIR}/inc/demo_ui_base.h
     ${CMAKE_SOURCE_DIR}/inc/demo_dash.h
     ${CMAKE_SOURCE_DIR}/inc/demo_chart.h
+    ${CMAKE_SOURCE_DIR}/inc/demo_chartgl.h
     ${CMAKE_SOURCE_DIR}/inc/demo_chartfeature.h
     ${CMAKE_SOURCE_DIR}/inc/demo_geojson.h
 )
