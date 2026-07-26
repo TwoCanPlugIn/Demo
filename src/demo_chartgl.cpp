@@ -26,9 +26,6 @@
 
 #include "demo_chartgl.h"
 
-// A decoder that parses geoJSON formatted text files
-#include "demo_geojson.h"
-
 // Used to store memory allocations when the tessalator combines vertices which are later deallocated
 std::vector<GLdouble*> temporaryVertices;
 
@@ -97,6 +94,11 @@ IMPLEMENT_DYNAMIC_CLASS(DemoChartGL, PlugInChartBaseGL)
 // Constructor and destructor implementation
 DemoChartGL::DemoChartGL() : PlugInChartBaseGL() {
 
+    // Instantiate the demo GeoJSON parser
+    m_jsonDecoder = std::make_unique<GeoJsonDecoder>();
+
+    // Quick and Dirty Quadtree
+    chartCache = std::make_unique<QuadTree>(GeoBounds{GeoPoint { -180.0, -90.0}, GeoPoint{180.0,90.0} });
 }
 
 DemoChartGL::~DemoChartGL() {
@@ -119,9 +121,6 @@ int DemoChartGL::Init(const wxString& full_path, int init_flags) {
         return PI_INIT_FAIL_REMOVE;
     }
 
-    // Instantiate the demo GeoJSON parser
-    m_jsonDecoder = std::make_unique<GeoJsonDecoder>();
-
     // Persist the name of the chart file (used later on for chart metadata)
     m_chartPath = full_path;
 
@@ -134,11 +133,20 @@ int DemoChartGL::Init(const wxString& full_path, int init_flags) {
     // Parse all of the features
     m_chartFeatures = m_jsonDecoder->GetFeatures();
 
+    // Add to the quadtree
+    for (size_t i = 0; i < m_chartFeatures.size(); ++i) {
+        GeoBounds b = ComputeBounds(m_chartFeatures[i].geoPoints);
+        chartCache->Insert(FeatureReference{ b, i });
+    }
+
+    wxLogDebug("From %s, Read %d, Quadtree %d", m_chartPath, m_chartFeatures.size(), chartCache->Size());
+
     // Zoom level is present in the first record of the demo geojson file
     m_Chart_Scale = m_chartFeatures.at(0).minZoom;
 
     // The chart bounds are important, it is how OpenCPN determines whether to 
     // display this chart. (Eg. Does the chart lie within the viewport?)
+    // BUG BUG duplicated ! See above
     m_chartBounds = m_jsonDecoder->CalculateBounds(m_chartFeatures);
 
     // Build a table of polygons (pairs of doubles) that describe the coverage areas
@@ -243,7 +251,7 @@ ChartFamilyEnumPI DemoChartGL::GetChartFamily() {
 
 // I don't believe the Natural Earth GEO JSON files use Mercator projection?
 OcpnProjTypePI DemoChartGL::GetChartProjection() {
-    return OcpnProjTypePI::PI_PROJECTION_EQUIRECTANGULAR;
+    return OcpnProjTypePI::PI_PROJECTION_MERCATOR;
 }
 
 wxString DemoChartGL::GetName() {
@@ -452,7 +460,23 @@ int DemoChartGL::RenderRegionViewOnGL(const wxGLContext& glc, const PlugIn_ViewP
     // Set the tesselator winding rule for filled areas
     gluTessProperty(tess, GLU_TESS_WINDING_RULE, GLU_TESS_WINDING_NONZERO);
 
-    for (const auto& chartFeature : m_chartFeatures) {
+    // Cull the Quadtree
+    std::vector<FeatureReference> culledFeatures;
+    GeoBounds b;
+    
+    b.min.x = std::min(viewPort.lon_min, viewPort.lon_max);
+    b.max.x = std::max(viewPort.lon_min, viewPort.lon_max);
+    b.min.y = std::min(viewPort.lat_min, viewPort.lat_max);
+    b.max.y = std::max(viewPort.lat_min, viewPort.lat_max);
+
+    chartCache->Query(b, culledFeatures);
+
+    wxLogDebug("Culled Features %d", culledFeatures.size());
+
+    // Lookup each culled chart feature and render
+    for (const auto& culledFeature : culledFeatures) {
+
+        GeoFeature chartFeature = m_chartFeatures.at(culledFeature.index);
 
         setColour(chartFeature.layer);
 
@@ -528,8 +552,8 @@ int DemoChartGL::RenderRegionViewOnGL(const wxGLContext& glc, const PlugIn_ViewP
         glDisable(GL_STENCIL_TEST);
     }
 
-    //auto end = std::chrono::high_resolution_clock::now();
-    //wxLogMessage("XXXXXX Duration: %d", std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count());
+    auto end = std::chrono::high_resolution_clock::now();
+    wxLogDebug("Render Duration: %d", std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count());
 
     // Unsure what the return value should be....
     return 1;

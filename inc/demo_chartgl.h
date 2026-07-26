@@ -39,6 +39,7 @@
 // Implements the decoder to parse geojson formatted files
 #include "demo_geojson.h"
 
+
 #include <wx/string.h>
 #include <wx/filename.h>
 #include <wx/log.h>
@@ -120,6 +121,12 @@ private:
 
     // Constructs the above table
     void BuildCoverageFromFeatures();
+
+    // Chart stuff
+    std::vector<ChartInformation> chartInformation;
+
+    // Quick & Dirty Quadtree
+    std::unique_ptr<QuadTree> chartCache;
 
 };
 

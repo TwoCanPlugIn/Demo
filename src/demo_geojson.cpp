@@ -221,5 +221,7 @@ GeoBounds GeoJsonDecoder::CalculateBounds(const std::vector<GeoFeature>& feature
         }
     }
 
-    return b;
+    return b; 
 }
+
+

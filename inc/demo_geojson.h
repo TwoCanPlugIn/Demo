@@ -33,7 +33,7 @@
 #include <wx/jsonval.h>
 #include <vector>
 
-#include "demo_chartfeature.h"
+#include "demo_quadtree.h"
 
 class GeoJsonDecoder {
 public:

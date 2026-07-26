@@ -61,6 +61,7 @@ set(SRC
     ${CMAKE_SOURCE_DIR}/src/demo_chart.cpp
     ${CMAKE_SOURCE_DIR}/src/demo_chartgl.cpp
     ${CMAKE_SOURCE_DIR}/src/demo_geojson.cpp
+    ${CMAKE_SOURCE_DIR}/src/demo_quadtree.cpp
 )
 set (INC
     ${CMAKE_SOURCE_DIR}/inc/demo_plugin.h
@@ -74,6 +75,7 @@ set (INC
     ${CMAKE_SOURCE_DIR}/inc/demo_chartgl.h
     ${CMAKE_SOURCE_DIR}/inc/demo_chartfeature.h
     ${CMAKE_SOURCE_DIR}/inc/demo_geojson.h
+    ${CMAKE_SOURCE_DIR}/inc/demo_quadtree.h
 )
 
 set (SOURCE_FILES ${SRC} ${INC})
