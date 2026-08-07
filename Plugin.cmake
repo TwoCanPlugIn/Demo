@@ -44,7 +44,7 @@ set(PKG_IS_OPEN_SOURCE "yes")
 set(PKG_HOMEPAGE https://github.com/twocanplugin/demoplugin)
 set(PKG_INFO_URL https://twocanplugin.github.io/Demo)
 
-set(PKG_API_LIB api-20)   # Specify the plugin API level
+set(PKG_API_LIB api-21)   # Specify the plugin API level
 
 add_definitions(-DocpnUSE_GL) # Specifiy the use of OpenGL
 

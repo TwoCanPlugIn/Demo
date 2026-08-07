@@ -54,6 +54,7 @@
 // Chapter 15. Using wxWidgets Advanced User Interface (wxAUI)
 // Chapter 16. Chart Plugin - (16a. Non OpenGL)
 //			   Chart Plugin - (16b. OpenGL)
+// Chapter 17. OpenCPN Plugin API 1.21 and beyond
 
 #include "demo_plugin.h"
 
@@ -79,8 +80,8 @@ extern "C" DECL_EXP void destroy_pi(opencpn_plugin* p) {
 }
 
 // Constructor
-// As the plugin uses newer functions, it requires a plugin API version of at least 1.20
-DemoPlugin::DemoPlugin(void* ppimgr) : opencpn_plugin_120(ppimgr), wxEvtHandler() {
+// Using OpenCPN Plugin API 1.21, the new model for introducing new Plugin API's
+DemoPlugin::DemoPlugin(void* ppimgr) : opencpn_plugin_121(ppimgr), wxEvtHandler() {
 	
 	// Initialize the plugin bitmap, converting from SVG to PNG. Refer to GetPluginBitmap below
 	// Note the icon file is located in the source repository data folder
@@ -119,11 +120,11 @@ int DemoPlugin::Init(void) {
 	auto demoContextMenu = new wxMenuItem(NULL, k_FirstContextMenu, "Demo", "Demo Plugin Menu", wxITEM_NORMAL, NULL);
 	demoContextMenuId = AddCanvasContextMenuItem(demoContextMenu, this);
 
-	// Example of adding an item to a sub context menu
+	// Example of adding an item to a sub context menu - Here we are demonstrating a new API introduced in API 1.21
 	// Valid Sub Menu Names are "Route", "Waypoint", "Track", "AIS")
-	auto dscMenu = new wxMenuItem(NULL, k_SecondContextMenu, "AIS Demo", "Demo Plugin AIS Sub Menu", wxITEM_NORMAL, NULL);
-	demoAISContextMenuId = AddCanvasContextMenuItemExt(dscMenu, this, "AIS");
-
+	auto wptMenu = new wxMenuItem(NULL, k_SecondContextMenu, "Toggle Names", "Demo Plugin Waypoint Sub Menu", wxITEM_NORMAL, NULL);
+	demoExtContextMenuId = AddCanvasContextMenuItemExt(wptMenu, this, "Route");
+	
 	// Example of adding a Toolbar button
 	// Firstly obtain the toolbar button icons
 	wxString pluginFolder = GetPluginDataDir(PKG_NAME) + wxFileName::GetPathSeparator() + "data" + wxFileName::GetPathSeparator();
@@ -250,6 +251,9 @@ void DemoPlugin::LateInit(void) {
 	Bind(EVT_SIGNALK, [&](ObservedEvt ev) {
 		HandleSignalK(ev);
 		});
+
+	// Obtain a pointer to the "new" interface for plugin API's beyond API 1.21
+	hostApi = std::move(GetHostApi());
 }
 
 // OpenCPN Plugin "housekeeping" methods. All plugins MUST implement these
@@ -358,14 +362,19 @@ void DemoPlugin::OnContextMenuItemCallback(int id) {
 	}
 }
 
-// Invoked when a plugin's context sub menu items are selected
-// Note requires an OpenCPN API level of 1.20 or higher
+// Demonstrating a new API introduced with Plugin API 1.21
 void DemoPlugin::OnContextMenuItemCallbackExt(int id, std::string obj_ident, std::string obj_type, double lat, double lon) {
-
-	if (id == demoAISContextMenuId) {
-		wxMessageBox(wxString::Format("AIS Target Information\nObject Id: %d\nObject Identifier (MMSI): %s\nObject Type: %s\nLatitude: %s\nLongitude: %s",
-			id, obj_ident.c_str(), obj_type.c_str(),
-			toSDMM_PlugIn(1, lat, true), toSDMM_PlugIn(2, lon, true)), "Demo Plugin", wxOK | wxICON_INFORMATION);
+	// Toggle display of the selected route's waypoint names
+	if (id == demoExtContextMenuId) {
+		showWaypointNames = !showWaypointNames;
+		// Attempt to obtain a pointer to the dynamic API
+		auto hostApi121 = std::dynamic_pointer_cast<HostApi121>(hostApi);
+		if (hostApi121) {
+			hostApi121->ShowRouteWaypointNames(obj_ident, showWaypointNames);
+		}
+		else {
+			// Fallback to some other level of functionality supported by that users version of OpenCPN
+		}
 	}
 }
 

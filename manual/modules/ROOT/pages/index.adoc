@@ -2161,5 +2161,92 @@ improvements.
 
 A better example of a complete Chart plugin can be found at https://github.com/beetlebugorg/tile57-opencpn-plugin
 
+=== Chapter 17. OpenCPN Plugin API Levels beyond 1.21
+
+A problem with the existing plugin architecture is that as core OpenCPN added new plugin API's, the only way for a
+plugin to support them was for the plugin class to inherit from the new base class. Eg.
+
+[source,cpp]
+----
+class DemoPlugin : public opencpn_plugin_117
+...
+class DemoPlugin : public opencpn_plugin_118
+...
+class DemoPlugin : public opencpn_plugin_119
+...
+class DemoPlugin : public opencpn_plugin_120
+...
+----
+
+However that meant that the only way for users to gain the new functionality was to install the new plugin. But 
+that would require users to have upgraded the core OpenCPN version. There was no way for a single plugin release 
+to support users on earlier versions of OpenCPN and at the same time support users on a newer version of OpenCPN
+with the new features of the plugin. In simple terms a plugin based on API 1.20 will not run on an earlier version 
+of OpenCPN that only supported API 1.18.
+
+A new dynamic API approach means that a single version of a plugin can support exising users on earlier versions 
+of OpenCPN and at the same time query if a new interface is available, and if so, then support the new features
+via the interface.
+
+With OpenCPN Plugin API 1.21, we now have support for new features, without alienating users yet to upgrade. The
+plugin class needs to inherit from API 1.21.
+
+[source, cpp]
+----
+class DemoPlugin : public opencpn_plugin_121
+----
+
+It then attempts to obtain a pointer to the interface, usually during the plugin's Init method.
+
+The pointer declaration:
+[source,cpp]
+----
+std::shared_ptr<HostApi> hostApi;
+----
+
+and initialization
+[source,cpp]
+----
+hostApi = std::move(GetHostApi());
+----
+
+The plugin can then invoke the "new" plugin API's via the pointer.
+[source, cpp]
+----
+auto hostApi121 = std::dynamic_pointer_cast<HostApi121>(hostApi);
+if (hostApi121) {
+	hostApi121->ShowRouteWaypointNames(obj_ident, showWaypointNames);
+}
+else {
+	// Fallback to some other level of functionality supported by that users version of OpenCPN
+}
+----
+
+image::demo_plugin-31.png[]
+
+An example of one of the new API 1.21 API's, in this example, toggling the display of a route's waypoint names.
+
+image::demo_plugin-32.png[]
+
+In the long term as new versions of OpenCPN are released with extended plugin API's, a plugin can
+support users remaining on the existing version as well as those upgrading to the new features. Eg.
+[source, cpp]
+----
+void DemoPlugin::NewFangledFunction(const wxString& route_guid) {
+	auto hostApi122 = std::dynamic_pointer_cast<HostApi122>(hostApi);
+	if (hostApi122) {
+		auto route = GetRoute_Plugin(route_guid);
+		hostApi122->BeginAIGeneratedRoute(route->m_NameString);
+		return;
+	}
+	auto hostApi121 = std::dynamic_pointer_cast<HostApi121>(hostApi);
+	if (hostApi121) {
+		hostApi121->ActivateRoutePI(route_guid, true);
+		return;
+	}
+	wxMessageBox("Activate the route manually");
+}
+----
+
 
 == 5. FAQ

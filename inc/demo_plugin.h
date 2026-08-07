@@ -60,7 +60,7 @@
 // Implements a simple dashboard for the AUI demo
 #include "demo_dash.h"
 
-class DemoPlugin : public opencpn_plugin_120, public wxEvtHandler {
+class DemoPlugin : public opencpn_plugin_121, public wxEvtHandler {
 public:
 	// Constructor
 	DemoPlugin(void* ppimgr);
@@ -116,7 +116,7 @@ private:
 
 	// Context Menu Id's
 	int demoContextMenuId;
-	int demoAISContextMenuId;
+	int demoExtContextMenuId;
 	
 	// Toolbar button Id & state
 	int demoToolbarId;
@@ -211,6 +211,12 @@ private:
 	wxAuiManager* auiManager;
 	void OnPaneClose(wxAuiManagerEvent& event);
 	std::unique_ptr<DemoDashboard> demoDash;
+
+	// For Plugin API versions beyond 1.21
+	std::shared_ptr<HostApi> hostApi;
+
+	// Using a "new" API 1.21 method to toggle display of waypoint names
+	bool showWaypointNames = false;
 
 };
 
